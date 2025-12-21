@@ -1,0 +1,13 @@
+llm:
+  provider: google
+  model: gemini-2.5-flash
+  temperature: 0.3
+  maxTokens: 8192
+  fallback:
+    provider: anthropic
+    model: claude-sonnet-4-20250514
+
+execution:
+  queuePriority: normal
+  timeoutMinutes: 15
+  retryAttempts: 2

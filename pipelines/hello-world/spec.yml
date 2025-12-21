@@ -1,0 +1,26 @@
+pipeline:
+  name: hello-world
+  version: 1.0.0
+  description: Simple test pipeline
+
+inputs:
+  - name: input1
+    type: text
+    label: Input Field
+    required: true
+    placeholder: Enter value...
+
+  - name: maxResults
+    type: number
+    label: Maximum Results
+    default: 50
+    required: false
+
+outputs:
+  - md
+  - html
+  - pdf
+
+variables:
+  tone: professional
+  detailLevel: comprehensive

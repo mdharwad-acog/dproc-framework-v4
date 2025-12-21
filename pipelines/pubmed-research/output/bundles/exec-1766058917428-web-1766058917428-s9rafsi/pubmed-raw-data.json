@@ -1,0 +1,99 @@
+{
+  "searchQuery": "CRISPR gene editing",
+  "rawPapers": [
+    {
+      "pmid": "31295471",
+      "title": "CRISPR-Cas9 system: A new-fangled dawn in gene editing.",
+      "authors": [
+        "Darshana Gupta",
+        "Oindrila Bhattacharjee",
+        "Drishti Mandal",
+        "Madhab Kumar Sen",
+        "Dhritiman Dey",
+        "Adhiraj Dasgupta",
+        "Tawsif Ahmed Kazi",
+        "Rahul Gupta",
+        "Senjuti Sinharoy",
+        "Krishnendu Acharya",
+        "Dhrubajyoti Chattopadhyay",
+        "V Ravichandiran",
+        "Syamal Roy",
+        "Dipanjan Ghosh"
+      ],
+      "journal": "Life sciences",
+      "publicationDate": "2019-07-08",
+      "abstract": "Till date, only three techniques namely Zinc Finger Nuclease (ZFN), Transcription-Activator Like Effector Nucleases (TALEN) and Clustered Regularly Interspaced Short Palindromic Repeats-CRISPR-Associated 9 (CRISPR-Cas9) are available for targeted genome editing. CRISPR-Cas system is very efficient, fast, easy and cheap technique for achieving knock-out gene in the cell. CRISPR-Cas9 system refurbishes the targeted genome editing approach into a more expedient and competent way, thus facilitating proficient genome editing through embattled double-strand breaks in approximately any organism and cell type. The off-target effects of CRISPR Cas system has been circumnavigated by using paired nickases. Moreover, CRISPR-Cas9 has been used effectively for numerous purposes, like knock-out of a gene, regulation of endogenous gene expression, live-cell labelling of chromosomal loci, edition of single-stranded RNA and high-throughput gene screening. The execution of the CRISPR-Cas9 system has amplified the number of accessible scientific substitutes for studying gene function, thus enabling generation of CRISPR-based disease models. Even though many mechanistic questions are left behind to be answered and the system is not yet fool-proof i.e., a number of challenges are yet to be addressed, the employment of CRISPR-Cas9-based genome engineering technologies will increase our understanding to disease processes and their treatment in the near future. In this review we have discussed the history of CRISPR-Cas9, its mechanism for genome editing and its application in animal, plant and protozoan parasites. Additionally, the pros and cons of CRISPR-Cas9 and its potential in therapeutic application have also been detailed here.",
+      "doi": "10.1016/j.lfs.2019.116636",
+      "keywords": [
+        "CRISPR-Cas9",
+        "Genome editing",
+        "Knock in",
+        "Knock out"
+      ]
+    },
+    {
+      "pmid": "38786024",
+      "title": "CRISPR-Based Gene Therapies: From Preclinical to Clinical Treatments.",
+      "authors": [
+        "Marine Laurent",
+        "Marine Geoffroy",
+        "Giulia Pavani",
+        "Simon Guiraud"
+      ],
+      "journal": "Cells",
+      "publicationDate": "2024-05-08",
+      "abstract": "In recent years, clustered regularly interspaced short palindromic repeats (CRISPRs) and CRISPR-associated (Cas) protein have emerged as a revolutionary gene editing tool to treat inherited disorders affecting different organ systems, such as blood and muscles. Both hematological and neuromuscular genetic disorders benefit from genome editing approaches but face different challenges in their clinical translation. The ability of CRISPR/Cas9 technologies to modify hematopoietic stem cells ex vivo has greatly accelerated the development of genetic therapies for blood disorders. In the last decade, many clinical trials were initiated and are now delivering encouraging results. The recent FDA approval of Casgevy, the first CRISPR/Cas9-based drug for severe sickle cell disease and transfusion-dependent β-thalassemia, represents a significant milestone in the field and highlights the great potential of this technology. Similar preclinical efforts are currently expanding CRISPR therapies to other hematologic disorders such as primary immunodeficiencies. In the neuromuscular field, the versatility of CRISPR/Cas9 has been instrumental for the generation of new cellular and animal models of Duchenne muscular dystrophy (DMD), offering innovative platforms to speed up preclinical development of therapeutic solutions. Several corrective interventions have been proposed to genetically restore dystrophin production using the CRISPR toolbox and have demonstrated promising results in different DMD animal models. Although these advances represent a significant step forward to the clinical translation of CRISPR/Cas9 therapies to DMD, there are still many hurdles to overcome, such as in vivo delivery methods associated with high viral vector doses, together with safety and immunological concerns. Collectively, the results obtained in the hematological and neuromuscular fields emphasize the transformative impact of CRISPR/Cas9 for patients affected by these debilitating conditions. As each field suffers from different and specific challenges, the clinical translation of CRISPR therapies may progress differentially depending on the genetic disorder. Ongoing investigations and clinical trials will address risks and limitations of these therapies, including long-term efficacy, potential genotoxicity, and adverse immune reactions. This review provides insights into the diverse applications of CRISPR-based technologies in both preclinical and clinical settings for monogenic blood disorders and muscular dystrophy and compare advances in both fields while highlighting current trends, difficulties, and challenges to overcome.",
+      "doi": "10.3390/cells13100800",
+      "keywords": [
+        "CRISPR/Cas9",
+        "Duchenne muscular dystrophy",
+        "blood disorders",
+        "gene editing",
+        "neuromuscular disorders",
+        "β-hemoglobinopathies"
+      ]
+    },
+    {
+      "pmid": "36656942",
+      "title": "CRISPR technology: A decade of genome editing is only the beginning.",
+      "authors": [
+        "Joy Y Wang",
+        "Jennifer A Doudna"
+      ],
+      "journal": "Science (New York, N.Y.)",
+      "publicationDate": "2023-01-20",
+      "abstract": "The advent of clustered regularly interspaced short palindromic repeat (CRISPR) genome editing, coupled with advances in computing and imaging capabilities, has initiated a new era in which genetic diseases and individual disease susceptibilities are both predictable and actionable. Likewise, genes responsible for plant traits can be identified and altered quickly, transforming the pace of agricultural research and plant breeding. In this Review, we discuss the current state of CRISPR-mediated genetic manipulation in human cells, animals, and plants along with relevant successes and challenges and present a roadmap for the future of this technology.",
+      "doi": "10.1126/science.add8643",
+      "keywords": []
+    },
+    {
+      "pmid": "30922545",
+      "title": "CRISPR-mediated gene editing for the surgeon scientist.",
+      "authors": [
+        "Stephen J O'Brien",
+        "Matthew B Ekman",
+        "Stephen Manek",
+        "Susan Galandiuk"
+      ],
+      "journal": "Surgery",
+      "publicationDate": "2019-03-25",
+      "abstract": "Tremendous advances have occurred in gene editing during the past 20 years with the development of a number of systems. The Clustered Regularly Interspaced Short Palindromic Repeats (CRISPR)-associated protein 9 (Cas9) system represents an exciting area of research. This review examines both the relevant studies pertaining to the history, current status, and modifications of this system, in comparison with other gene-editing systems and future applications, and limitations of the CRISPR-Cas9 gene-editing system, with a focus on applications of relevance to the surgeon scientist. The CRISPR-Cas9 system was described initially in 2012 for gene editing in bacteria and then in human cells, and since then, a number of modifications have improved the efficiency and specificity of gene editing. Clinical studies have been limited because further research is required to verify its safety in patients. Some clinical trials in oncology have opened, and early studies have shown that gene editing may have a particular role in the field of organ transplantation and in the care of trauma patients. Gene editing is likely to play an important role in future research in many aspects of the surgery arena.",
+      "doi": "10.1016/j.surg.2019.01.030",
+      "keywords": []
+    },
+    {
+      "pmid": "34107195",
+      "title": "CRISPR-Cas9 Gene Editing for Sickle Cell Disease and β-Thalassemia.",
+      "authors": [
+        "Roland Meisel"
+      ],
+      "journal": "The New England journal of medicine",
+      "publicationDate": "2021-Jun-10",
+      "abstract": "No abstract available",
+      "doi": "10.1056/NEJMc2103481",
+      "keywords": []
+    }
+  ],
+  "totalFound": 23068,
+  "timestamp": "2025-12-18T11:55:20.035Z"
+}

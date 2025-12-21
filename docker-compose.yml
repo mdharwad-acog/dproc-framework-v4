@@ -1,0 +1,145 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: dproc-postgres
+    labels:
+      - "exclude=true"
+    environment:
+      POSTGRES_DB: dproc
+      POSTGRES_USER: dproc
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dproc_secure_2024}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dproc"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dproc-network
+
+  # Redis for Queue
+  redis:
+    image: redis:7-alpine
+    container_name: dproc-redis
+    labels:
+      - "exclude=true"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dproc-network
+
+  # DProc Web UI
+  dproc-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dproc-web
+    labels:
+      - "user=${USER:-mdharwad}"
+      - "description=DProc Framework - LLM Report Generation"
+    volumes:
+      - /shared/dproc-workspace:/shared/dproc-workspace
+      - ${HOME}/.dproc:/root/.dproc:ro
+    environment:
+      # Database
+      DATABASE_URL: postgresql://dproc:${DB_PASSWORD:-dproc_secure_2024}@postgres:5432/dproc
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # Workspace
+      DPROC_WORKSPACE: /shared/dproc-workspace
+
+      # Node
+      NODE_ENV: production
+
+      # API Keys (optional - can use SecretsManager instead)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:3000/api/stats', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - dproc-network
+
+  # DProc Worker (Background Job Processor)
+  dproc-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dproc-worker
+    labels:
+      - "exclude=true"
+    command: ["node", "/app/packages/dproc-cli/dist/worker.js"]
+    volumes:
+      - /shared/dproc-workspace:/shared/dproc-workspace
+      - ${HOME}/.dproc:/root/.dproc:ro
+      - ./packages/dproc-cli/dist:/app/packages/dproc-cli/dist:ro
+    environment:
+      # Database
+      DATABASE_URL: postgresql://dproc:${DB_PASSWORD:-dproc_secure_2024}@postgres:5432/dproc
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # Workspace
+      DPROC_WORKSPACE: /shared/dproc-workspace
+
+      # Worker Settings
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+
+      # Node
+      NODE_ENV: production
+      DEBUG: ${DEBUG:-dproc:*}
+
+      # API Keys
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - dproc-network
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  dproc-network:
+    driver: bridge

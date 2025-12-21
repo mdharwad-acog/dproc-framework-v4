@@ -1,0 +1,177 @@
+.
+├── apps
+│   └── dproc-web
+│       ├── app
+│       │   ├── api
+│       │   │   ├── download
+│       │   │   │   └── [id]
+│       │   │   │       └── route.ts
+│       │   │   ├── execute
+│       │   │   │   └── route.ts
+│       │   │   ├── executions
+│       │   │   │   └── [id]
+│       │   │   │       └── route.ts
+│       │   │   ├── history
+│       │   │   │   └── route.ts
+│       │   │   ├── jobs
+│       │   │   │   └── [id]
+│       │   │   │       └── cancel
+│       │   │   │           └── route.ts
+│       │   │   ├── pipelines
+│       │   │   │   ├── [name]
+│       │   │   │   │   └── route.ts
+│       │   │   │   └── route.ts
+│       │   │   ├── preview
+│       │   │   │   └── [id]
+│       │   │   │       └── route.ts
+│       │   │   ├── stats
+│       │   │   │   └── route.ts
+│       │   │   └── stream
+│       │   │       └── route.ts
+│       │   ├── dashboard
+│       │   │   ├── execute
+│       │   │   │   └── [name]
+│       │   │   │       └── page.tsx
+│       │   │   ├── history
+│       │   │   │   └── page.tsx
+│       │   │   ├── new
+│       │   │   │   └── page.tsx
+│       │   │   └── page.tsx
+│       │   ├── favicon.ico
+│       │   ├── globals.css
+│       │   ├── layout.tsx
+│       │   ├── page.tsx
+│       │   └── settings
+│       │       └── page.tsx
+│       ├── components
+│       │   ├── pipeline-form.tsx
+│       │   ├── recent-execution.tsx
+│       │   ├── report-preview.tsx
+│       │   └── ui
+│       │       ├── alert.tsx
+│       │       ├── badge.tsx
+│       │       ├── button.tsx
+│       │       ├── card.tsx
+│       │       ├── dialog.tsx
+│       │       ├── dropdown-menu.tsx
+│       │       ├── input.tsx
+│       │       ├── label.tsx
+│       │       ├── select.tsx
+│       │       ├── separator.tsx
+│       │       ├── skeleton.tsx
+│       │       ├── sonner.tsx
+│       │       └── textarea.tsx
+│       ├── components.json
+│       ├── eslint.config.mjs
+│       ├── hooks
+│       │   └── use-streaming-report.ts
+│       ├── lib
+│       │   ├── server-api.ts
+│       │   └── utils.ts
+│       ├── next.config.ts
+│       ├── next-env.d.ts
+│       ├── package.json
+│       ├── postcss.config.mjs
+│       ├── public
+│       │   ├── file.svg
+│       │   ├── globe.svg
+│       │   ├── next.svg
+│       │   ├── vercel.svg
+│       │   └── window.svg
+│       ├── README.md
+│       └── tsconfig.json
+├── docker-compose.yml
+├── Dockerfile
+├── dproc.db
+├── files.txt
+├── package.json
+├── packages
+│   ├── dproc-cli
+│   │   ├── package.json
+│   │   ├── README.md
+│   │   ├── src
+│   │   │   ├── index.ts
+│   │   │   └── worker.ts
+│   │   ├── tsconfig.json
+│   │   └── tsconfig.tsbuildinfo
+│   ├── dproc-core
+│   │   ├── package.json
+│   │   ├── src
+│   │   │   ├── cache
+│   │   │   │   └── index.ts
+│   │   │   ├── config
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── secrets.ts
+│   │   │   │   └── workspace.ts
+│   │   │   ├── db
+│   │   │   │   ├── adapter.ts
+│   │   │   │   ├── factory.ts
+│   │   │   │   ├── postgres-adapter.ts
+│   │   │   │   └── sqlite-adapter.ts
+│   │   │   ├── executor
+│   │   │   │   └── index.ts
+│   │   │   ├── index.ts
+│   │   │   ├── llm
+│   │   │   │   └── provider.ts
+│   │   │   ├── pipeline
+│   │   │   │   └── loader.ts
+│   │   │   ├── queue
+│   │   │   │   └── worker.ts
+│   │   │   └── template
+│   │   │       ├── nunjucks.ts
+│   │   │       └── renderer.ts
+│   │   ├── tsconfig.json
+│   │   └── tsconfig.tsbuildinfo
+│   └── dproc-types
+│       ├── package.json
+│       ├── src
+│       │   └── index.ts
+│       ├── tsconfig.json
+│       └── tsconfig.tsbuildinfo
+├── pipelines
+│   ├── hello-world
+│   │   ├── config.yml
+│   │   ├── data
+│   │   ├── output
+│   │   │   ├── bundles
+│   │   │   │   └── exec-1766039261678-job-1766039261633.json
+│   │   │   └── reports
+│   │   │       ├── exec-1766040113098-job-1766040113048.html
+│   │   │       ├── exec-1766049113394-job-1766049113275.html
+│   │   │       ├── exec-1766050326816-web-1766050326694-39leb2i.html
+│   │   │       ├── exec-1766050577863-web-1766050577801-agpnidl.html
+│   │   │       ├── exec-1766050749598-web-1766050749501-gqnaejy.html
+│   │   │       ├── exec-1766051218042-web-1766051218042-oebmrk6.html
+│   │   │       └── exec-1766051844762-web-1766051844762-27sa494.html
+│   │   ├── processor.ts
+│   │   ├── prompts
+│   │   │   └── main.prompt.md
+│   │   ├── README.md
+│   │   ├── spec.yml
+│   │   └── templates
+│   │       ├── report.html.njk
+│   │       └── report.md.njk
+│   └── pubmed-research
+│       ├── config.yml
+│       ├── data
+│       ├── output
+│       │   ├── bundles
+│       │   │   └── exec-1766058917428-web-1766058917428-s9rafsi
+│       │   │       └── pubmed-raw-data.json
+│       │   └── reports
+│       │       └── exec-1766058917428-web-1766058917428-s9rafsi.html
+│       ├── processor.ts
+│       ├── prompts
+│       │   └── main.prompt.md
+│       ├── README.md
+│       ├── spec.yml
+│       └── templates
+│           ├── report.html.njk
+│           └── report.md.njk
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+├── scripts
+│   └── publish-npm.sh
+└── tsconfig.json
+
+63 directories, 112 files

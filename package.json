@@ -1,0 +1,29 @@
+{
+  "name": "dproc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm -r --parallel dev",
+    "clean": "pnpm -r clean",
+    "type-check": "pnpm -r type-check",
+    "lint": "pnpm -r lint",
+    "worker": "tsx packages/dproc-cli/src/worker.ts",
+    "dproc": "tsx packages/dproc-cli/src/index.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "eslint": "^9.16.0",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "dependencies": {
+    "pg": "^8.16.3"
+  }
+}
