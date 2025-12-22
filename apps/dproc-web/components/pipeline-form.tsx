@@ -29,7 +29,7 @@ interface PipelineFormProps {
 
 export interface ExecutionData {
   pipelineName: string;
-  inputs: Record<string, any>;
+  inputs: Record<string, unknown>;
   provider: string;
   model: string;
   userApiKey?: string;
@@ -47,13 +47,13 @@ const PROVIDER_MODELS = {
 };
 
 export function PipelineForm({ pipeline, onSubmit }: PipelineFormProps) {
-  const [inputs, setInputs] = useState<Record<string, any>>({});
-  const [provider, setProvider] = useState<string>("google");
-  const [model, setModel] = useState<string>("gemini-2.5-flash");
+  const [inputs, setInputs] = useState<Record<string, unknown>>({});
+  const [provider, setProvider] = useState("google");
+  const [model, setModel] = useState("gemini-2.5-flash");
   const [useOwnKey, setUseOwnKey] = useState(false);
   const [userApiKey, setUserApiKey] = useState("");
   const [outputFormat, setOutputFormat] = useState<string>(
-    pipeline.spec.outputs[0]
+    pipeline.spec.outputs[0] || "html"
   );
   const [isLoading, setIsLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState<
@@ -66,12 +66,16 @@ export function PipelineForm({ pipeline, onSubmit }: PipelineFormProps) {
     pipeline.spec.inputs.forEach((input) => {
       const value = inputs[input.name];
 
+      // Check required fields
       if (input.required && !value) {
         errors[input.name] = `${input.label} is required`;
       }
 
-      if (input.type === "number" && value && isNaN(Number(value))) {
-        errors[input.name] = `${input.label} must be a number`;
+      // Validate number type
+      if (input.type === "number" && value !== "" && value !== undefined) {
+        if (isNaN(Number(value))) {
+          errors[input.name] = `${input.label} must be a valid number`;
+        }
       }
     });
 
@@ -84,7 +88,6 @@ export function PipelineForm({ pipeline, onSubmit }: PipelineFormProps) {
     if (!validateInputs()) return;
 
     setIsLoading(true);
-
     try {
       await onSubmit({
         pipelineName: pipeline.name,
@@ -100,45 +103,81 @@ export function PipelineForm({ pipeline, onSubmit }: PipelineFormProps) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{pipeline.spec.pipeline.name}</CardTitle>
-        <CardDescription>{pipeline.spec.pipeline.description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit}>
+      <Card className="border-border bg-card">
+        <CardHeader>
+          <CardTitle>{pipeline.spec.pipeline.name}</CardTitle>
+          <CardDescription>
+            {pipeline.spec.pipeline.description}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
           {/* Inputs */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Inputs</h3>
+            <h3 className="text-sm font-semibold">Inputs</h3>
             {pipeline.spec.inputs.map((input) => (
               <div key={input.name} className="space-y-2">
                 <Label htmlFor={input.name}>
                   {input.label}
                   {input.required && (
-                    <span className="text-red-500 ml-1">*</span>
+                    <Badge variant="secondary" className="ml-2 text-xs">
+                      Required
+                    </Badge>
                   )}
                 </Label>
 
+                {/* TEXT INPUT */}
                 {input.type === "text" && (
                   <Input
                     id={input.name}
-                    required={input.required}
-                    value={inputs[input.name] || ""}
+                    value={(inputs[input.name] as string) || ""}
                     onChange={(e) =>
                       setInputs({ ...inputs, [input.name]: e.target.value })
                     }
-                    placeholder={`Enter ${input.label.toLowerCase()}`}
+                    placeholder={
+                      input.placeholder || `Enter ${input.label.toLowerCase()}`
+                    }
+                    className="bg-secondary/50 border-border"
                   />
                 )}
 
+                {/* NUMBER INPUT */}
+                {input.type === "number" && (
+                  <Input
+                    id={input.name}
+                    type="number"
+                    value={
+                      inputs[input.name] !== undefined &&
+                      inputs[input.name] !== ""
+                        ? Number(inputs[input.name])
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // ✅ Store as NUMBER, not string
+                      setInputs({
+                        ...inputs,
+                        [input.name]: value === "" ? undefined : Number(value),
+                      });
+                    }}
+                    placeholder={
+                      input.placeholder || `Enter ${input.label.toLowerCase()}`
+                    }
+                    className="bg-secondary/50 border-border"
+                    min={0}
+                    step={1}
+                  />
+                )}
+
+                {/* SELECT INPUT */}
                 {input.type === "select" && (
                   <Select
-                    value={inputs[input.name] || ""}
+                    value={(inputs[input.name] as string) || ""}
                     onValueChange={(value) =>
                       setInputs({ ...inputs, [input.name]: value })
                     }
                   >
-                    <SelectTrigger id={input.name}>
+                    <SelectTrigger className="bg-secondary/50 border-border">
                       <SelectValue
                         placeholder={`Select ${input.label.toLowerCase()}`}
                       />
@@ -154,7 +193,7 @@ export function PipelineForm({ pipeline, onSubmit }: PipelineFormProps) {
                 )}
 
                 {validationErrors[input.name] && (
-                  <p className="text-sm text-red-500">
+                  <p className="text-sm text-destructive">
                     {validationErrors[input.name]}
                   </p>
                 )}
@@ -163,12 +202,12 @@ export function PipelineForm({ pipeline, onSubmit }: PipelineFormProps) {
           </div>
 
           {/* LLM Config */}
-          <div className="space-y-4 border-t pt-4">
-            <h3 className="text-lg font-semibold">LLM Configuration</h3>
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold">LLM Configuration</h3>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="provider">Provider</Label>
+                <Label>Provider</Label>
                 <Select
                   value={provider}
                   onValueChange={(val) => {
@@ -178,7 +217,7 @@ export function PipelineForm({ pipeline, onSubmit }: PipelineFormProps) {
                     );
                   }}
                 >
-                  <SelectTrigger id="provider">
+                  <SelectTrigger className="bg-secondary/50 border-border">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -190,9 +229,9 @@ export function PipelineForm({ pipeline, onSubmit }: PipelineFormProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="model">Model</Label>
+                <Label>Model</Label>
                 <Select value={model} onValueChange={setModel}>
-                  <SelectTrigger id="model">
+                  <SelectTrigger className="bg-secondary/50 border-border">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -209,70 +248,70 @@ export function PipelineForm({ pipeline, onSubmit }: PipelineFormProps) {
             </div>
 
             {/* Hybrid API key */}
-            <div className="space-y-3 bg-slate-50 p-4 rounded-lg border">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="useOwnKey"
-                  checked={useOwnKey}
-                  onChange={(e) => setUseOwnKey(e.target.checked)}
-                  className="w-4 h-4"
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={useOwnKey}
+                onChange={(e) => setUseOwnKey(e.target.checked)}
+                className="w-4 h-4"
+              />
+              <Label>Use my own API key</Label>
+              <Badge variant="secondary" className="text-xs">
+                Optional
+              </Badge>
+            </div>
+
+            {useOwnKey && (
+              <>
+                <Input
+                  type="password"
+                  placeholder="Enter your API key"
+                  value={userApiKey}
+                  onChange={(e) => setUserApiKey(e.target.value)}
+                  required={useOwnKey}
+                  className="bg-secondary/50 border-border"
                 />
-                <Label htmlFor="useOwnKey" className="cursor-pointer">
-                  Use my own API key
-                </Label>
-                <Badge variant="secondary">Optional</Badge>
-              </div>
-
-              {useOwnKey && (
-                <div className="space-y-2">
-                  <Input
-                    type="password"
-                    placeholder={`Enter your ${provider} API key`}
-                    value={userApiKey}
-                    onChange={(e) => setUserApiKey(e.target.value)}
-                    required={useOwnKey}
-                  />
-                  <p className="text-xs text-slate-500">
-                    Your API key is only used for this request and never stored
-                    on the server.
-                  </p>
-                </div>
-              )}
-
-              {!useOwnKey && (
-                <p className="text-xs text-slate-600">
-                  ✓ Using system credentials (configured via environment).
+                <p className="text-xs text-muted-foreground">
+                  Your API key is only used for this request and never stored on
+                  the server.
                 </p>
-              )}
-            </div>
+              </>
+            )}
 
-            <div className="space-y-2">
-              <Label htmlFor="format">Output Format</Label>
-              <Select
-                value={outputFormat}
-                onValueChange={(value) => setOutputFormat(value)}
-              >
-                <SelectTrigger id="format">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {pipeline.spec.outputs.map((fmt) => (
-                    <SelectItem key={fmt} value={fmt}>
-                      {fmt.toUpperCase()}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!useOwnKey && (
+              <p className="text-xs text-green-600 dark:text-green-400">
+                ✓ Using system credentials (configured via environment).
+              </p>
+            )}
           </div>
 
-          <Button type="submit" disabled={isLoading} className="w-full">
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {/* Output Format */}
+          <div className="space-y-2">
+            <Label>Output Format</Label>
+            <Select value={outputFormat} onValueChange={setOutputFormat}>
+              <SelectTrigger className="bg-secondary/50 border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {pipeline.spec.outputs.map((fmt) => (
+                  <SelectItem key={fmt} value={fmt}>
+                    {fmt.toUpperCase()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-linear-to-r from-accent to-primary hover:shadow-lg hover:shadow-accent/20 text-accent-foreground"
+          >
+            {isLoading && <Loader2 className="mr-2 size-4 animate-spin" />}
             {isLoading ? "Generating..." : "Generate Report"}
           </Button>
-        </form>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </form>
   );
 }

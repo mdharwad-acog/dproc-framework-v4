@@ -5,6 +5,8 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { PipelineLoader } from "@aganitha/dproc-core/dist/pipeline/loader.js";
 import { TemplateRenderer } from "@aganitha/dproc-core/dist/template/renderer.js";
 import { WorkspaceManager } from "@aganitha/dproc-core/dist/config/workspace.js";
+import { DProcError } from "@aganitha/dproc-core"; // ✅ NEW
+import { NextResponse } from "next/server"; // ✅ NEW
 
 const workspace = new WorkspaceManager();
 const PIPELINES_DIR = workspace.getPipelinesDir();
@@ -14,14 +16,30 @@ export async function POST(req: Request) {
     const { pipelineName, inputs, provider, model, userApiKey } =
       await req.json();
 
+    // ✅ Enhanced validation
+    if (!pipelineName) {
+      return NextResponse.json(
+        { error: "Pipeline name is required" },
+        { status: 400 }
+      );
+    }
+
     // HYBRID MODEL
     const apiKey =
       userApiKey || process.env[`${provider.toUpperCase()}_API_KEY`];
 
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "No API key available" }), {
-        status: 400,
-      });
+      // ✅ Better error message
+      return NextResponse.json(
+        {
+          error: `No API key available for ${provider}`,
+          fixes: [
+            `Set ${provider.toUpperCase()}_API_KEY environment variable`,
+            "Or provide your own API key in the form",
+          ],
+        },
+        { status: 400 }
+      );
     }
 
     // Load pipeline
@@ -29,15 +47,22 @@ export async function POST(req: Request) {
     const pipelines = await loader.listPipelines();
 
     if (!pipelines.includes(pipelineName)) {
-      return new Response(JSON.stringify({ error: "Pipeline not found" }), {
-        status: 404,
-      });
+      return NextResponse.json(
+        {
+          error: `Pipeline '${pipelineName}' not found`,
+          fixes: [
+            "Check pipeline name spelling",
+            "Run 'dproc list' to see available pipelines",
+          ],
+        },
+        { status: 404 }
+      );
     }
 
     const spec = await loader.loadSpec(pipelineName);
     const config = await loader.loadConfig(pipelineName);
 
-    // Load prompt template (simple version for web UI)
+    // Load prompt template
     const path = await import("path");
     const fs = await import("fs/promises");
     const promptsDir = path.join(PIPELINES_DIR, pipelineName, "prompts");
@@ -47,11 +72,15 @@ export async function POST(req: Request) {
     );
 
     if (!mainPromptFile) {
-      return new Response(
-        JSON.stringify({ error: "Prompt template not found" }),
+      return NextResponse.json(
         {
-          status: 404,
-        }
+          error: "Prompt template not found",
+          fixes: [
+            "Create a prompt file in the prompts/ directory",
+            "Name it 'main.prompt.md' or similar",
+          ],
+        },
+        { status: 404 }
       );
     }
 
@@ -81,7 +110,13 @@ export async function POST(req: Request) {
         llmModel = createGoogleGenerativeAI({ apiKey })(model);
         break;
       default:
-        throw new Error(`Unsupported provider: ${provider}`);
+        return NextResponse.json(
+          {
+            error: `Unsupported provider: ${provider}`,
+            fixes: ["Use one of: openai, anthropic, google"],
+          },
+          { status: 400 }
+        );
     }
 
     // Stream response
@@ -95,8 +130,30 @@ export async function POST(req: Request) {
     return result.toDataStreamResponse();
   } catch (error) {
     console.error("Stream error:", error);
-    return new Response(JSON.stringify({ error: String(error) }), {
-      status: 500,
-    });
+
+    // ✅ Handle DProc errors
+    if (error instanceof DProcError) {
+      return NextResponse.json(
+        {
+          error: error.userMessage,
+          code: error.code,
+          fixes: error.fixes,
+        },
+        { status: 400 }
+      );
+    }
+
+    // ✅ Generic error
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Stream failed",
+        fixes: [
+          "Check your API key is valid",
+          "Verify the pipeline configuration",
+          "Try again in a moment",
+        ],
+      },
+      { status: 500 }
+    );
   }
 }

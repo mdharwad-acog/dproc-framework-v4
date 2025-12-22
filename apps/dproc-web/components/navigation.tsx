@@ -10,6 +10,8 @@ import {
   History,
   Moon,
   Sun,
+  Menu,
+  X,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
@@ -17,7 +19,8 @@ import { useEffect, useState } from "react";
 export default function Navigation() {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState<boolean>(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   useEffect(() => {
     setMounted(true);
@@ -27,6 +30,13 @@ export default function Navigation() {
     if (path === "/") return pathname === "/";
     return pathname.startsWith(path);
   };
+
+  const navLinks = [
+    { href: "/", label: "Home", icon: null },
+    { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
+    { href: "/dashboard/history", label: "History", icon: History },
+    { href: "/settings", label: "Settings", icon: SettingsIcon },
+  ];
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
@@ -43,47 +53,25 @@ export default function Navigation() {
             </span>
           </Link>
 
-          {/* Navigation Links */}
+          {/* Desktop Navigation Links */}
           <div className="hidden md:flex items-center gap-6">
-            <Link
-              href="/"
-              className={`text-sm font-medium transition-colors hover:text-accent ${
-                isActive("/") && pathname === "/"
-                  ? "text-accent"
-                  : "text-muted-foreground"
-              }`}
-            >
-              Home
-            </Link>
-            <Link
-              href="/dashboard"
-              className={`text-sm font-medium transition-colors hover:text-accent ${
-                isActive("/dashboard") ? "text-accent" : "text-muted-foreground"
-              }`}
-            >
-              <BarChart3 className="inline-block size-4 mr-1.5" />
-              Dashboard
-            </Link>
-            <Link
-              href="/dashboard/history"
-              className={`text-sm font-medium transition-colors hover:text-accent ${
-                isActive("/dashboard/history")
-                  ? "text-accent"
-                  : "text-muted-foreground"
-              }`}
-            >
-              <History className="inline-block size-4 mr-1.5" />
-              History
-            </Link>
-            <Link
-              href="/settings"
-              className={`text-sm font-medium transition-colors hover:text-accent ${
-                isActive("/settings") ? "text-accent" : "text-muted-foreground"
-              }`}
-            >
-              <SettingsIcon className="inline-block size-4 mr-1.5" />
-              Settings
-            </Link>
+            {navLinks.map((link) => {
+              const Icon = link.icon;
+              const active = isActive(link.href);
+
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`text-sm font-medium transition-colors hover:text-accent ${
+                    active ? "text-accent" : "text-muted-foreground"
+                  }`}
+                >
+                  {Icon && <Icon className="inline-block size-4 mr-1.5" />}
+                  {link.label}
+                </Link>
+              );
+            })}
           </div>
 
           {/* Right side actions */}
@@ -95,6 +83,7 @@ export default function Navigation() {
                 size="icon"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 className="text-muted-foreground hover:text-accent"
+                aria-label="Toggle theme"
               >
                 {theme === "dark" ? (
                   <Sun className="size-5" />
@@ -107,17 +96,70 @@ export default function Navigation() {
 
             {/* CTA Button */}
             {pathname === "/" && (
-              <Link href="/dashboard">
+              <Link href="/dashboard" className="hidden sm:block">
                 <Button
                   size="sm"
-                  className="bg-linear-to-r from-accent to-primary hover:shadow-lg hover:shadow-accent/20 text-accent-foreground"
+                  className="bg-linear-to-r from-accent to-primary hover:shadow-lg hover:shadow-accent/20 text-accent-foreground transition-all duration-200"
+                >
+                  Get Started
+                </Button>
+              </Link>
+            )}
+
+            {/* Mobile Menu Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden text-muted-foreground hover:text-accent"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? (
+                <X className="size-5" />
+              ) : (
+                <Menu className="size-5" />
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Mobile Navigation Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-border py-4 space-y-3">
+            {navLinks.map((link) => {
+              const Icon = link.icon;
+              const active = isActive(link.href);
+
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-2 rounded-md transition-colors ${
+                    active
+                      ? "bg-accent/10 text-accent"
+                      : "text-muted-foreground hover:bg-secondary/50 hover:text-accent"
+                  }`}
+                >
+                  {Icon && <Icon className="size-4" />}
+                  <span className="text-sm font-medium">{link.label}</span>
+                </Link>
+              );
+            })}
+
+            {/* Mobile CTA */}
+            {pathname === "/" && (
+              <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                <Button
+                  size="sm"
+                  className="w-full bg-linear-to-r from-accent to-primary hover:shadow-lg hover:shadow-accent/20 text-accent-foreground"
                 >
                   Get Started
                 </Button>
               </Link>
             )}
           </div>
-        </div>
+        )}
       </div>
     </nav>
   );

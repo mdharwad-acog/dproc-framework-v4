@@ -96,6 +96,7 @@ export default function Home() {
     <div className="min-h-screen bg-background transition-colors duration-300">
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-linear-to-br from-accent/5 via-background to-primary/5 border-b border-border">
+        {/* Background decorations */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-40 -right-40 size-80 rounded-full bg-accent/10 blur-3xl animate-pulse" />
           <div className="absolute -bottom-40 -left-40 size-80 rounded-full bg-primary/10 blur-3xl animate-pulse [animation-delay:1s]" />
@@ -115,15 +116,15 @@ export default function Home() {
           </div>
 
           {/* Main Heading */}
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight text-balance">
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight max-w-5xl">
             Intelligent Data <br />
-            <span className="bg-clip-text text-transparent bg-linear-to-r from-accent via-primary to-accent">
+            <span className="bg-clip-text text-transparent bg-linear-to-r from-accent via-primary to-accent bg-size-[200%_auto] animate-linear">
               Processing Engine
             </span>
           </h1>
 
           {/* Subheading */}
-          <p className="text-lg md:text-xl text-muted-foreground mb-12 max-w-2xl mx-auto text-pretty leading-relaxed">
+          <p className="text-lg md:text-xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed">
             Build powerful data processing pipelines powered by AI. Transform
             raw data into actionable insights in minutes, not weeks.
           </p>
@@ -133,7 +134,7 @@ export default function Home() {
             <Link href="/dashboard">
               <Button
                 size="lg"
-                className="bg-linear-to-r from-accent to-primary hover:shadow-lg hover:shadow-accent/20 text-accent-foreground transition-all duration-200"
+                className="bg-linear-to-r from-accent to-primary hover:shadow-lg hover:shadow-accent/20 text-accent-foreground transition-all duration-200 hover:scale-105"
               >
                 <Play className="mr-2 size-5" />
                 Get Started
@@ -189,12 +190,14 @@ export default function Home() {
               >
                 <CardHeader>
                   <div
-                    className={`size-12 rounded-xl bg-linear-to-br ${feature.linear} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}
+                    className={`size-12 rounded-xl bg-linear-to-br ${feature.linear} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg`}
                   >
                     <feature.icon className="size-6 text-white" />
                   </div>
                   <CardTitle className="text-lg">{feature.title}</CardTitle>
-                  <CardDescription>{feature.description}</CardDescription>
+                  <CardDescription className="text-muted-foreground">
+                    {feature.description}
+                  </CardDescription>
                 </CardHeader>
               </Card>
             ))}
@@ -219,11 +222,11 @@ export default function Home() {
               <div key={i} className="relative">
                 {/* Connector line */}
                 {i < steps.length - 1 && (
-                  <div className="absolute top-8 left-1/2 w-[calc(100%+2rem)] h-1 bg-linear-to-r from-accent/50 to-transparent hidden md:block -translate-y-1/2" />
+                  <div className="absolute top-8 left-1/2 w-full h-0.5 bg-linear-to-r from-accent/50 to-accent/20 hidden md:block -translate-y-1/2 z-0" />
                 )}
 
                 <div className="relative z-10">
-                  <div className="size-16 rounded-full bg-linear-to-br from-accent/20 to-primary/20 text-accent font-bold text-2xl flex items-center justify-center mx-auto mb-6 border-2 border-accent/30 shadow-lg shadow-accent/10">
+                  <div className="size-16 rounded-full bg-linear-to-br from-accent/20 to-primary/20 text-accent font-bold text-2xl flex items-center justify-center mx-auto mb-6 border-2 border-accent/30 shadow-lg shadow-accent/10 backdrop-blur-sm">
                     {step.num}
                   </div>
                   <h3 className="font-semibold text-lg mb-2 text-center">
@@ -252,7 +255,7 @@ export default function Home() {
           <Link href="/dashboard">
             <Button
               size="lg"
-              className="bg-linear-to-r from-accent to-primary hover:shadow-lg hover:shadow-accent/20 text-accent-foreground transition-all duration-200"
+              className="bg-linear-to-r from-accent to-primary hover:shadow-lg hover:shadow-accent/20 text-accent-foreground transition-all duration-200 hover:scale-105"
             >
               Create Your First Pipeline
               <ArrowRight className="ml-2 size-5" />

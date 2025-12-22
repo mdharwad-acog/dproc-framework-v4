@@ -18,6 +18,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    ports:
+      - "5432:5432" # Expose for host network worker
     networks:
       - dproc-network
 
@@ -36,6 +38,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    ports:
+      - "6379:6379" # Expose for host network worker
     networks:
       - dproc-network
 
@@ -87,10 +91,13 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    ports:
+      - "3000:3000"
     networks:
       - dproc-network
 
   # DProc Worker (Background Job Processor)
+  # Uses host network to bypass Crostini container networking restrictions
   dproc-worker:
     build:
       context: .
@@ -102,13 +109,12 @@ services:
     volumes:
       - /shared/dproc-workspace:/shared/dproc-workspace
       - ${HOME}/.dproc:/root/.dproc:ro
-      - ./packages/dproc-cli/dist:/app/packages/dproc-cli/dist:ro
     environment:
-      # Database
-      DATABASE_URL: postgresql://dproc:${DB_PASSWORD:-dproc_secure_2024}@postgres:5432/dproc
+      # Database - connect to localhost since we're on host network
+      DATABASE_URL: postgresql://dproc:${DB_PASSWORD:-dproc_secure_2024}@localhost:5432/dproc
 
-      # Redis
-      REDIS_HOST: redis
+      # Redis - connect to localhost since we're on host network
+      REDIS_HOST: localhost
       REDIS_PORT: 6379
 
       # Workspace
@@ -131,8 +137,9 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
-    networks:
-      - dproc-network
+    # Use host network to access internet directly
+    # This bypasses Chrome OS Crostini networking restrictions
+    network_mode: "host"
 
 volumes:
   postgres-data:

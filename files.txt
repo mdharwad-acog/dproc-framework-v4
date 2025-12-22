@@ -37,6 +37,7 @@
 │       │   │   ├── new
 │       │   │   │   └── page.tsx
 │       │   │   └── page.tsx
+│       │   ├── error.tsx
 │       │   ├── favicon.ico
 │       │   ├── globals.css
 │       │   ├── layout.tsx
@@ -44,9 +45,14 @@
 │       │   └── settings
 │       │       └── page.tsx
 │       ├── components
+│       │   ├── error-alert.tsx
+│       │   ├── error-boundary.tsx
+│       │   ├── loading-skeleton.tsx
+│       │   ├── navigation.tsx
 │       │   ├── pipeline-form.tsx
 │       │   ├── recent-execution.tsx
 │       │   ├── report-preview.tsx
+│       │   ├── theme-provider.tsx
 │       │   └── ui
 │       │       ├── alert.tsx
 │       │       ├── badge.tsx
@@ -63,10 +69,15 @@
 │       │       └── textarea.tsx
 │       ├── components.json
 │       ├── eslint.config.mjs
+│       ├── files.txt
 │       ├── hooks
+│       │   ├── use-error-handler.ts
 │       │   └── use-streaming-report.ts
 │       ├── lib
+│       │   ├── error-types.ts
+│       │   ├── error-utils.ts
 │       │   ├── server-api.ts
+│       │   ├── toast-helper.tsx
 │       │   └── utils.ts
 │       ├── next.config.ts
 │       ├── next-env.d.ts
@@ -82,7 +93,6 @@
 │       └── tsconfig.json
 ├── docker-compose.yml
 ├── Dockerfile
-├── dproc.db
 ├── files.txt
 ├── package.json
 ├── packages
@@ -92,8 +102,7 @@
 │   │   ├── src
 │   │   │   ├── index.ts
 │   │   │   └── worker.ts
-│   │   ├── tsconfig.json
-│   │   └── tsconfig.tsbuildinfo
+│   │   └── tsconfig.json
 │   ├── dproc-core
 │   │   ├── package.json
 │   │   ├── src
@@ -108,6 +117,13 @@
 │   │   │   │   ├── factory.ts
 │   │   │   │   ├── postgres-adapter.ts
 │   │   │   │   └── sqlite-adapter.ts
+│   │   │   ├── errors
+│   │   │   │   ├── api-errors.ts
+│   │   │   │   ├── base.ts
+│   │   │   │   ├── execution-errors.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── pipeline-errors.ts
+│   │   │   │   └── validation-errors.ts
 │   │   │   ├── executor
 │   │   │   │   └── index.ts
 │   │   │   ├── index.ts
@@ -117,11 +133,12 @@
 │   │   │   │   └── loader.ts
 │   │   │   ├── queue
 │   │   │   │   └── worker.ts
-│   │   │   └── template
-│   │   │       ├── nunjucks.ts
-│   │   │       └── renderer.ts
-│   │   ├── tsconfig.json
-│   │   └── tsconfig.tsbuildinfo
+│   │   │   ├── template
+│   │   │   │   ├── nunjucks.ts
+│   │   │   │   └── renderer.ts
+│   │   │   └── validation
+│   │   │       └── index.ts
+│   │   └── tsconfig.json
 │   └── dproc-types
 │       ├── package.json
 │       ├── src
@@ -171,7 +188,9 @@
 ├── pnpm-lock.yaml
 ├── pnpm-workspace.yaml
 ├── scripts
-│   └── publish-npm.sh
+│   ├── publish-npm.sh
+│   ├── rsync-to-server.sh
+│   └── update-package-names.sh
 └── tsconfig.json
 
-63 directories, 112 files
+65 directories, 129 files

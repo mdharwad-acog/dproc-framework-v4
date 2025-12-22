@@ -1,22 +1,31 @@
+import { getGlobalStats } from "@/lib/server-api";
 import { NextResponse } from "next/server";
-import { getGlobalStats, getPipelineStats } from "@/lib/server-api";
+import { DProcError } from "@aganitha/dproc-core";
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const pipeline = searchParams.get("pipeline");
-
-    if (pipeline) {
-      const stats = await getPipelineStats(pipeline);
-      return NextResponse.json({ stats });
-    } else {
-      const globalStats = await getGlobalStats();
-      return NextResponse.json({ stats: globalStats });
-    }
+    const stats = await getGlobalStats();
+    return NextResponse.json({ stats });
   } catch (error) {
-    console.error("Error fetching stats:", error);
+    console.error("Stats API error:", error);
+
+    if (error instanceof DProcError) {
+      return NextResponse.json(
+        {
+          error: error.userMessage,
+          code: error.code,
+          fixes: error.fixes,
+        },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
-      { error: "Failed to fetch stats" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to get statistics",
+        code: "STATS_ERROR",
+      },
       { status: 500 }
     );
   }

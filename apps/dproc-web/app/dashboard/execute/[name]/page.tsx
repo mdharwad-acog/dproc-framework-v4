@@ -30,9 +30,12 @@ import {
   Clock,
   Download,
   Eye,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { ErrorAlert } from "@/components/error-alert";
+import { showErrorToast, showSuccessToast } from "@/lib/toast-helper";
 
 type PipelineSpec = {
   pipeline: {
@@ -66,6 +69,10 @@ export default function ExecutePipelinePage({
   const [executionId, setExecutionId] = useState<string | null>(null);
   const [executionStatus, setExecutionStatus] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<unknown>(null); // ✅ NEW
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({}); // ✅ NEW
 
   // Load pipeline spec
   useEffect(() => {
@@ -82,12 +89,19 @@ export default function ExecutePipelinePage({
         setOutputFormat(data.spec.outputs[0] || "html");
 
         // Initialize inputs with defaults
+        // Initialize inputs with defaults
         const defaultInputs: Record<string, any> = {};
         data.spec.inputs.forEach((input: any) => {
-          defaultInputs[input.name] = input.default || "";
+          if (input.default !== undefined) {
+            defaultInputs[input.name] =
+              input.type === "number"
+                ? Number(input.default) // ✅ Convert number defaults
+                : input.default;
+          }
         });
         setInputs(defaultInputs);
       } catch (err) {
+        setLoadError(err); // ✅ Store full error object
         setError((err as Error).message);
       }
     }
@@ -113,6 +127,18 @@ export default function ExecutePipelinePage({
         ) {
           clearInterval(interval);
           setExecuting(false);
+
+          // ✅ Show completion toast
+          if (data.status.status === "completed") {
+            showSuccessToast(
+              "Pipeline completed",
+              "Report generated successfully"
+            );
+          } else if (data.status.status === "failed") {
+            showErrorToast(
+              new Error(data.status.error || "Pipeline execution failed")
+            );
+          }
         }
       } catch (err) {
         console.error("Error polling status:", err);
@@ -122,7 +148,35 @@ export default function ExecutePipelinePage({
     return () => clearInterval(interval);
   }, [executionId]);
 
+  // ✅ NEW: Validate inputs before submission
+  const validateInputs = () => {
+    const errors: Record<string, string> = {};
+
+    spec?.inputs.forEach((input) => {
+      const value = inputs[input.name];
+
+      if (input.required && !value) {
+        errors[input.name] = `${input.label} is required`;
+      }
+
+      if (input.type === "number" && value && isNaN(Number(value))) {
+        errors[input.name] = `${input.label} must be a valid number`;
+      }
+    });
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleExecute = async () => {
+    // ✅ Validate before executing
+    if (!validateInputs()) {
+      toast.error("Validation failed", {
+        description: "Please fix the errors in the form",
+      });
+      return;
+    }
+
     setExecuting(true);
     setError(null);
     setExecutionStatus(null);
@@ -142,12 +196,19 @@ export default function ExecutePipelinePage({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to execute pipeline");
+        const errorMessage = data.error || "Failed to execute pipeline";
+        setError(errorMessage);
+        showErrorToast(new Error(errorMessage));
+        setExecuting(false);
+        return;
       }
 
       setExecutionId(data.executionId);
+      showSuccessToast("Pipeline started", "Job queued successfully");
     } catch (err) {
-      setError((err as Error).message);
+      const errorMessage = (err as Error).message;
+      setError(errorMessage);
+      showErrorToast(err);
       setExecuting(false);
     }
   };
@@ -157,25 +218,37 @@ export default function ExecutePipelinePage({
     setExecutionStatus(null);
     setError(null);
     setExecuting(false);
+    setValidationErrors({}); // ✅ Clear validation errors
   };
 
-  if (error && !spec) {
+  // ✅ Enhanced error state for loading failures
+  if (loadError && !spec) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-6 py-8">
-          <Alert variant="destructive" className="border-destructive/50">
-            <XCircle className="size-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+          <Link href="/dashboard">
+            <Button
+              variant="outline"
+              className="mb-4 border-border bg-transparent"
+            >
+              <ArrowLeft className="mr-2 size-4" />
+              Back to Dashboard
+            </Button>
+          </Link>
+          <ErrorAlert error={loadError} />
         </div>
       </div>
     );
   }
 
+  // ✅ Loading state
   if (!spec) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
-        <Loader2 className="size-8 animate-spin text-accent" />
+        <div className="text-center">
+          <Loader2 className="size-8 animate-spin text-accent mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading pipeline...</p>
+        </div>
       </div>
     );
   }
@@ -214,7 +287,7 @@ export default function ExecutePipelinePage({
                     <Label htmlFor={input.name}>
                       {input.label}
                       {input.required && (
-                        <span className="text-red-500 ml-1">*</span>
+                        <span className="text-destructive ml-1">*</span>
                       )}
                     </Label>
 
@@ -223,11 +296,24 @@ export default function ExecutePipelinePage({
                         id={input.name}
                         placeholder={input.placeholder}
                         value={inputs[input.name] || ""}
-                        onChange={(e) =>
-                          setInputs({ ...inputs, [input.name]: e.target.value })
-                        }
+                        onChange={(e) => {
+                          setInputs({
+                            ...inputs,
+                            [input.name]: e.target.value,
+                          });
+                          // ✅ Clear validation error on change
+                          if (validationErrors[input.name]) {
+                            const newErrors = { ...validationErrors };
+                            delete newErrors[input.name];
+                            setValidationErrors(newErrors);
+                          }
+                        }}
                         disabled={executing}
-                        className="bg-secondary/50 border-border"
+                        className={`bg-secondary/50 border-border ${
+                          validationErrors[input.name]
+                            ? "border-destructive focus-visible:ring-destructive"
+                            : ""
+                        }`}
                       />
                     )}
 
@@ -236,30 +322,59 @@ export default function ExecutePipelinePage({
                         id={input.name}
                         type="number"
                         placeholder={input.placeholder}
-                        value={inputs[input.name] || ""}
-                        onChange={(e) =>
+                        value={
+                          inputs[input.name] !== undefined &&
+                          inputs[input.name] !== ""
+                            ? String(inputs[input.name])
+                            : ""
+                        }
+                        onChange={(e) => {
+                          const value = e.target.value;
                           setInputs({
                             ...inputs,
-                            [input.name]: parseFloat(e.target.value),
-                          })
-                        }
+                            [input.name]:
+                              value === "" ? undefined : Number(value), // ✅ Store as NUMBER
+                          });
+                          // Clear validation error on change
+                          if (validationErrors[input.name]) {
+                            const newErrors = { ...validationErrors };
+                            delete newErrors[input.name];
+                            setValidationErrors(newErrors);
+                          }
+                        }}
                         disabled={executing}
-                        className="bg-secondary/50 border-border"
+                        className={`bg-secondary/50 border-border ${
+                          validationErrors[input.name]
+                            ? "border-destructive focus-visible:ring-destructive"
+                            : ""
+                        }`}
                       />
                     )}
 
                     {input.type === "select" && (
                       <Select
                         value={inputs[input.name] || ""}
-                        onValueChange={(value) =>
-                          setInputs({ ...inputs, [input.name]: value })
-                        }
+                        onValueChange={(value) => {
+                          setInputs({ ...inputs, [input.name]: value });
+                          // ✅ Clear validation error on change
+                          if (validationErrors[input.name]) {
+                            const newErrors = { ...validationErrors };
+                            delete newErrors[input.name];
+                            setValidationErrors(newErrors);
+                          }
+                        }}
                         disabled={executing}
                       >
-                        <SelectTrigger className="bg-secondary/50 border-border">
+                        <SelectTrigger
+                          className={`bg-secondary/50 border-border ${
+                            validationErrors[input.name]
+                              ? "border-destructive"
+                              : ""
+                          }`}
+                        >
                           <SelectValue placeholder="Select option" />
                         </SelectTrigger>
-                        <SelectContent className="bg-secondary border-border">
+                        <SelectContent className="bg-popover border-border">
                           {input.options?.map((option) => (
                             <SelectItem key={option} value={option}>
                               {option}
@@ -267,6 +382,14 @@ export default function ExecutePipelinePage({
                           ))}
                         </SelectContent>
                       </Select>
+                    )}
+
+                    {/* ✅ Validation error display */}
+                    {validationErrors[input.name] && (
+                      <div className="flex items-center gap-2 text-sm text-destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <span>{validationErrors[input.name]}</span>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -282,7 +405,7 @@ export default function ExecutePipelinePage({
                     <SelectTrigger className="bg-secondary/50 border-border">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-secondary border-border">
+                    <SelectContent className="bg-popover border-border">
                       {spec.outputs.map((format) => (
                         <SelectItem key={format} value={format}>
                           {format.toUpperCase()}
@@ -292,14 +415,12 @@ export default function ExecutePipelinePage({
                   </Select>
                 </div>
 
+                {/* ✅ Error Alert */}
                 {error && (
-                  <Alert
-                    variant="destructive"
-                    className="border-destructive/50"
-                  >
-                    <XCircle className="size-4" />
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
+                  <ErrorAlert
+                    error={new Error(error)}
+                    onDismiss={() => setError(null)}
+                  />
                 )}
 
                 <div className="flex gap-2">
@@ -321,7 +442,8 @@ export default function ExecutePipelinePage({
                       </>
                     )}
                   </Button>
-                  {executionStatus === "processing" && (
+
+                  {executionStatus?.status === "processing" && (
                     <Button
                       variant="destructive"
                       onClick={async () => {
@@ -339,10 +461,16 @@ export default function ExecutePipelinePage({
                           );
 
                           if (response.ok) {
-                            setExecutionStatus("cancelled");
+                            setExecutionStatus({
+                              ...executionStatus,
+                              status: "cancelled",
+                            });
+                            toast.info("Job cancelled", {
+                              description: "Pipeline execution was cancelled",
+                            });
                           }
                         } catch (error) {
-                          console.log(error);
+                          showErrorToast(error);
                         }
                       }}
                     >
@@ -501,16 +629,12 @@ export default function ExecutePipelinePage({
                       </div>
                     )}
 
+                    {/* ✅ Enhanced error display */}
                     {executionStatus.error && (
-                      <Alert
-                        variant="destructive"
-                        className="border-destructive/50"
-                      >
-                        <XCircle className="size-4" />
-                        <AlertDescription>
-                          {executionStatus.error}
-                        </AlertDescription>
-                      </Alert>
+                      <ErrorAlert
+                        error={new Error(executionStatus.error)}
+                        title="Execution Failed"
+                      />
                     )}
                   </div>
                 )}

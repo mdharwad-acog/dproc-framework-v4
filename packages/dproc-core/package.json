@@ -1,6 +1,6 @@
 {
   "name": "@aganitha/dproc-core",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -24,7 +24,7 @@
     "@ai-sdk/anthropic": "^1.0.5",
     "@ai-sdk/google": "^1.0.8",
     "@ai-sdk/openai": "^1.0.9",
-    "@aganitha/dproc-types": "^0.1.2",
+    "@aganitha/dproc-types": "^0.2.1",
     "ai": "^4.0.38",
     "axios": "^1.13.2",
     "better-sqlite3": "^11.8.1",

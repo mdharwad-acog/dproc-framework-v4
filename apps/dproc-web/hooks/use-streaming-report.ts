@@ -2,10 +2,11 @@
 
 import { useChat } from "ai/react";
 import { useState } from "react";
+import { showErrorToast } from "@/lib/toast-helper";
 
 export interface StreamingReportOptions {
   pipelineName: string;
-  inputs: Record<string, any>;
+  inputs: Record<string, unknown>;
   provider: string;
   model: string;
   userApiKey?: string;
@@ -18,25 +19,35 @@ export function useStreamingReport() {
   const { messages, append, isLoading, stop } = useChat({
     api: "/api/stream",
     onError: (error) => {
-      setError(error.message);
+      const errorMessage = error.message || "Streaming failed";
+      setError(errorMessage);
+      showErrorToast(new Error(errorMessage));
     },
     onFinish: (message) => {
       // Extract metadata if provider returns it
       setMetadata({
         tokensUsed: message.content.length, // Approximate
         model: "streaming",
+        executionTime: Date.now(), // Approximate
       });
     },
   });
 
   const generate = async (options: StreamingReportOptions) => {
-    setError(null);
-    setMetadata(null);
+    try {
+      setError(null);
+      setMetadata(null);
 
-    await append({
-      role: "user",
-      content: JSON.stringify(options),
-    });
+      await append({
+        role: "user",
+        content: JSON.stringify(options),
+      });
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to generate report";
+      setError(errorMessage);
+      showErrorToast(err instanceof Error ? err : new Error(errorMessage));
+    }
   };
 
   return {

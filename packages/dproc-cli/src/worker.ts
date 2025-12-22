@@ -1,8 +1,10 @@
 #!/usr/bin/env node
+
 import { Worker } from "bullmq";
-import { ReportExecutor } from "@aganitha/dproc-core";
+import { ReportExecutor, DProcError } from "@aganitha/dproc-core"; // ✅ Import DProcError
 import { WorkspaceManager } from "@aganitha/dproc-core";
 import { SecretsManager } from "@aganitha/dproc-core";
+import chalk from "chalk"; // ✅ Add chalk for colors
 import "dotenv/config";
 
 // Initialize workspace and secrets
@@ -14,7 +16,7 @@ let secretsData;
 try {
   secretsData = await secrets.load();
 } catch (error: any) {
-  console.warn("⚠️  Could not load secrets.json:", error.message);
+  console.warn(chalk.yellow("⚠️  Could not load secrets.json:"), error.message);
   secretsData = { apiKeys: {}, lastUpdated: 0 };
 }
 
@@ -22,9 +24,11 @@ try {
 if (secretsData.apiKeys.google && !process.env.GOOGLE_API_KEY) {
   process.env.GOOGLE_API_KEY = secretsData.apiKeys.google;
 }
+
 if (secretsData.apiKeys.anthropic && !process.env.ANTHROPIC_API_KEY) {
   process.env.ANTHROPIC_API_KEY = secretsData.apiKeys.anthropic;
 }
+
 if (secretsData.apiKeys.openai && !process.env.OPENAI_API_KEY) {
   process.env.OPENAI_API_KEY = secretsData.apiKeys.openai;
 }
@@ -40,8 +44,12 @@ if (!hasAnthropic) missing.push("ANTHROPIC_API_KEY");
 if (!hasGoogle) missing.push("GOOGLE_API_KEY");
 
 if (missing.length > 0) {
-  console.warn(`⚠️  Warning: Missing API keys: ${missing.join(", ")}`);
-  console.warn("API keys can also be configured via 'dproc configure'\n");
+  console.warn(
+    chalk.yellow(`⚠️  Warning: Missing API keys: ${missing.join(", ")}`)
+  );
+  console.warn(
+    chalk.gray("API keys can also be configured via 'dproc configure'\n")
+  );
 }
 
 // Redis configuration
@@ -51,11 +59,11 @@ const redisConfig = {
   password: process.env.REDIS_PASSWORD,
 };
 
-console.log("🚀 DProc Worker starting...");
-console.log("📂 Workspace:", workspace.getRoot());
-console.log("📂 Pipelines:", workspace.getPipelinesDir());
-console.log("📊 Database:", workspace.getDatabasePath());
-console.log("📡 Redis:", `${redisConfig.host}:${redisConfig.port}`);
+console.log(chalk.cyan("🚀 DProc Worker starting..."));
+console.log(chalk.gray("📂 Workspace:"), workspace.getRoot());
+console.log(chalk.gray("📂 Pipelines:"), workspace.getPipelinesDir());
+console.log(chalk.gray("📊 Database:"), workspace.getDatabasePath());
+console.log(chalk.gray("📡 Redis:"), `${redisConfig.host}:${redisConfig.port}`);
 
 // Initialize executor
 const executor = new ReportExecutor(workspace.getPipelinesDir(), redisConfig);
@@ -64,7 +72,9 @@ const executor = new ReportExecutor(workspace.getPipelinesDir(), redisConfig);
 const worker = new Worker(
   "dproc-jobs",
   async (job) => {
-    console.log(`\n[${new Date().toISOString()}] Processing job ${job.id}...`);
+    console.log(
+      chalk.blue(`\n[${new Date().toISOString()}] Processing job ${job.id}...`)
+    );
     await executor.execute(job.data);
   },
   {
@@ -81,43 +91,64 @@ const worker = new Worker(
   }
 );
 
-// Event handlers
+// ========================================================================
+// ✅ ENHANCED EVENT HANDLERS WITH BETTER ERROR DISPLAY
+// ========================================================================
+
 worker.on("completed", (job) => {
-  console.log(`✓ Job ${job.id} completed successfully`);
+  console.log(chalk.green(`✓ Job ${job.id} completed successfully`));
 });
 
 worker.on("failed", (job, err) => {
-  console.error(`✗ Job ${job?.id} failed:`, err.message);
+  console.error(chalk.red(`\n✗ Job ${job?.id} failed`));
+
+  // ✅ Display structured error if available
+  if (err instanceof DProcError) {
+    console.error(chalk.white(err.userMessage));
+    console.error(chalk.dim(`Error Code: ${err.code}`));
+
+    if (err.fixes.length > 0) {
+      console.error(chalk.yellow("\n💡 How to fix:"));
+      err.fixes.forEach((fix, i) => {
+        console.error(chalk.yellow(`  ${i + 1}. ${fix}`));
+      });
+    }
+  } else {
+    console.error(chalk.white(err.message));
+  }
+  console.error(); // Spacing
 });
 
 worker.on("error", (err) => {
-  console.error("Worker error:", err);
+  console.error(chalk.red("Worker error:"), err);
 });
 
 worker.on("stalled", (jobId) => {
-  console.warn(`⚠️  Job ${jobId} stalled`);
+  console.warn(chalk.yellow(`⚠️  Job ${jobId} stalled`));
 });
 
 worker.on("active", (job) => {
-  console.log(`▶ Job ${job.id} is now active`);
+  console.log(chalk.blue(`▶ Job ${job.id} is now active`));
 });
 
-console.log("\n✓ DProc Worker ready!");
-console.log(`  Concurrency: ${process.env.WORKER_CONCURRENCY || 2}`);
-console.log("\n💻 Accepting jobs from:");
-console.log("  - CLI: dproc execute <pipeline>");
-console.log("  - Web UI: http://localhost:3000");
-console.log("\nWaiting for jobs...\n");
+console.log(chalk.green("\n✓ DProc Worker ready!"));
+console.log(
+  chalk.gray(`  Concurrency: ${process.env.WORKER_CONCURRENCY || 2}`)
+);
+console.log(chalk.white("\n💻 Accepting jobs from:"));
+console.log(chalk.gray("  - CLI: dproc execute <pipeline>"));
+console.log(chalk.gray("  - Web UI: http://localhost:3000"));
+console.log(chalk.white("\nWaiting for jobs...\n"));
 
 // Graceful shutdown
 const shutdown = async () => {
-  console.log("\n🛑 Shutting down worker gracefully...");
+  console.log(chalk.yellow("\n🛑 Shutting down worker gracefully..."));
   try {
     await worker.close();
-    console.log("✓ Worker closed successfully");
+    console.log(chalk.green("✓ Worker closed successfully"));
     process.exit(0);
   } catch (error) {
-    console.error("Error during shutdown:", error);
+    console.error(chalk.red("Error during shutdown:"), error);
     process.exit(1);
   }
 };

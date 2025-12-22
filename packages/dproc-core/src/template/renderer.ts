@@ -1,6 +1,9 @@
 import nunjucks from "nunjucks";
 import type { TemplateContext } from "@aganitha/dproc-types";
 
+// ✅ NEW: Import errors
+import { TemplateRenderError } from "../errors/index.js";
+
 export class TemplateRenderer {
   private env: nunjucks.Environment;
 
@@ -19,28 +22,40 @@ export class TemplateRenderer {
 
   /**
    * Render template string with context
+   * ✅ NOW WITH STRUCTURED ERRORS
    */
   render(template: string, context: TemplateContext): string {
     try {
       return this.env.renderString(template, context);
     } catch (error: any) {
-      throw new Error(`Template rendering failed: ${error.message}`);
+      // ✅ NEW: Throw structured error
+      throw new TemplateRenderError(
+        "template",
+        error.message || "Template rendering failed",
+        error
+      );
     }
   }
 
   /**
    * Render template file with context
+   * ✅ NOW WITH STRUCTURED ERRORS
    */
   renderFile(templatePath: string, context: TemplateContext): string {
     try {
       return this.env.render(templatePath, context);
     } catch (error: any) {
-      throw new Error(`Template file rendering failed: ${error.message}`);
+      throw new TemplateRenderError(
+        templatePath,
+        error.message || "Template file rendering failed",
+        error
+      );
     }
   }
 
   /**
    * Render prompt template (for LLM)
+   * ✅ NOW WITH STRUCTURED ERRORS
    */
   renderPrompt(
     promptTemplate: string,
@@ -53,7 +68,11 @@ export class TemplateRenderer {
     try {
       return this.env.renderString(promptTemplate, context);
     } catch (error: any) {
-      throw new Error(`Prompt rendering failed: ${error.message}`);
+      throw new TemplateRenderError(
+        "prompt",
+        error.message || "Prompt rendering failed",
+        error
+      );
     }
   }
 

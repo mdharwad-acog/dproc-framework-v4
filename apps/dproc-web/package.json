@@ -9,8 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@aganitha/dproc-core": "^0.1.2",
-    "@aganitha/dproc-types": "^0.1.2",
+    "@aganitha/dproc-core": "^0.2.1",
+    "@aganitha/dproc-types": "^0.2.1",
     "@ai-sdk/anthropic": "^1.0.5",
     "@ai-sdk/google": "^1.0.8",
     "@ai-sdk/openai": "^1.0.9",

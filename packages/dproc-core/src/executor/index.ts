@@ -19,6 +19,16 @@ import type {
   LLMConfig,
 } from "@aganitha/dproc-types";
 
+// ✅ NEW: Import error system and validation
+import {
+  DProcError,
+  ProcessorMissingError,
+  ProcessingError,
+  TemplateMissingError,
+  TemplateRenderError,
+} from "../errors/index.js";
+import { PipelineValidator } from "../validation/index.js";
+
 export class ReportExecutor {
   private queue: Queue;
   private db: DatabaseAdapter;
@@ -28,6 +38,9 @@ export class ReportExecutor {
   private cacheStore: CacheManager;
   private workspace: WorkspaceManager;
   private activeJobs = new Map<string, AbortController>();
+
+  // ✅ NEW: Add validator
+  private validator: PipelineValidator;
 
   constructor(
     private pipelinesDir: string,
@@ -40,6 +53,9 @@ export class ReportExecutor {
     this.configLoader = new ConfigLoader();
     this.cacheStore = new CacheManager();
     this.workspace = new WorkspaceManager();
+
+    // ✅ NEW: Initialize validator
+    this.validator = new PipelineValidator();
   }
 
   /**
@@ -96,6 +112,7 @@ export class ReportExecutor {
 
   /**
    * Main execution flow - called by worker
+   * ✅ NOW WITH VALIDATION & STRUCTURED ERROR HANDLING
    */
   async execute(jobData: JobData): Promise<void> {
     const startTime = Date.now();
@@ -162,15 +179,54 @@ export class ReportExecutor {
       }
 
       // ========================================================================
-      // STEP 2: Execute data processor
+      // ✅ NEW: PRE-EXECUTION VALIDATION WITH NORMALIZATION
+      // ========================================================================
+      logger.info("Validating execution requirements...");
+      const outputDir = path.join(pipelinePath, "output", "reports");
+
+      const validationResult = await this.validator.validateBeforeExecution(
+        jobData.pipelineName,
+        spec,
+        config,
+        jobData.inputs,
+        outputDir
+      );
+
+      // Throw if validation fails (structured errors)
+      this.validator.throwIfInvalid(validationResult, jobData.pipelineName);
+
+      // ✅ USE NORMALIZED INPUTS for the rest of execution
+      if (validationResult.normalizedInputs) {
+        jobData.inputs = validationResult.normalizedInputs;
+      }
+
+      logger.info("✓ Validation passed");
+
+      // ========================================================================
+      // STEP 2: Execute data processor (with better error handling)
       // ========================================================================
       logger.info("Executing data processor...");
-      const processorResult = await this.executeProcessor(
-        pipelinePath,
-        jobData.inputs,
-        executionId,
-        abortController.signal
-      );
+
+      let processorResult: ProcessorResult;
+      try {
+        processorResult = await this.executeProcessor(
+          pipelinePath,
+          jobData.inputs,
+          executionId,
+          abortController.signal
+        );
+      } catch (error: any) {
+        // ✅ NEW: Wrap processor errors with context
+        if (error instanceof DProcError) {
+          throw error; // Already structured
+        }
+        throw new ProcessingError(
+          jobData.pipelineName,
+          "data-processor",
+          error.message || "Processor execution failed",
+          error instanceof Error ? error : undefined
+        );
+      }
 
       if (abortController.signal.aborted) {
         throw new Error("Job cancelled during processor execution");
@@ -187,15 +243,35 @@ export class ReportExecutor {
       // STEP 3: Load and render prompt templates
       // ========================================================================
       logger.info("Rendering prompts...");
-      const prompts = await this.loadPrompts(pipelinePath);
+
+      let prompts: Record<string, string>;
+      try {
+        prompts = await this.loadPrompts(pipelinePath);
+      } catch (error: any) {
+        throw new ProcessingError(
+          jobData.pipelineName,
+          "prompt-loading",
+          "Failed to load prompt templates",
+          error instanceof Error ? error : undefined
+        );
+      }
+
       const renderedPrompts: Record<string, string> = {};
 
       for (const [name, template] of Object.entries(prompts)) {
-        renderedPrompts[name] = this.templateRenderer.renderPrompt(template, {
-          inputs: jobData.inputs,
-          vars,
-          data: processorResult.attributes,
-        });
+        try {
+          renderedPrompts[name] = this.templateRenderer.renderPrompt(template, {
+            inputs: jobData.inputs,
+            vars,
+            data: processorResult.attributes,
+          });
+        } catch (error: any) {
+          throw new TemplateRenderError(
+            name,
+            error.message || "Failed to render prompt template",
+            error instanceof Error ? error : undefined
+          );
+        }
       }
 
       if (abortController.signal.aborted) {
@@ -206,10 +282,25 @@ export class ReportExecutor {
       // STEP 4: LLM Enrichment with structured JSON extraction
       // ========================================================================
       logger.info("Calling LLM for enrichment...");
-      const llmResult = await this.llmProvider.generate(config.llm, {
-        prompt: renderedPrompts.main! || Object.values(renderedPrompts)[0]!,
-        extractJson: true,
-      });
+
+      let llmResult: any;
+      try {
+        llmResult = await this.llmProvider.generate(config.llm, {
+          prompt: renderedPrompts.main! || Object.values(renderedPrompts)[0]!,
+          extractJson: true,
+        });
+      } catch (error: any) {
+        // LLM provider already throws structured errors
+        if (error instanceof DProcError) {
+          throw error;
+        }
+        throw new ProcessingError(
+          jobData.pipelineName,
+          "llm-enrichment",
+          error.message || "LLM generation failed",
+          error instanceof Error ? error : undefined
+        );
+      }
 
       if (abortController.signal.aborted) {
         throw new Error("Job cancelled after LLM call");
@@ -249,14 +340,28 @@ export class ReportExecutor {
       // STEP 6: Render final template
       // ========================================================================
       logger.info("Rendering template...");
-      const template = await this.loadTemplate(
-        pipelinePath,
-        jobData.outputFormat
-      );
-      const finalOutput = this.templateRenderer.render(
-        template,
-        templateContext
-      );
+
+      let template: string;
+      try {
+        template = await this.loadTemplate(pipelinePath, jobData.outputFormat);
+      } catch (error: any) {
+        throw new TemplateMissingError(
+          jobData.pipelineName,
+          `${jobData.outputFormat}.njk`,
+          path.join(pipelinePath, "templates")
+        );
+      }
+
+      let finalOutput: string;
+      try {
+        finalOutput = this.templateRenderer.render(template, templateContext);
+      } catch (error: any) {
+        throw new TemplateRenderError(
+          `${jobData.outputFormat}.njk`,
+          error.message || "Failed to render output template",
+          error instanceof Error ? error : undefined
+        );
+      }
 
       if (abortController.signal.aborted) {
         throw new Error("Job cancelled during template rendering");
@@ -288,6 +393,10 @@ export class ReportExecutor {
 
       logger.info(`✓ Execution completed in ${Date.now() - startTime}ms`);
     } catch (error: any) {
+      // ========================================================================
+      // ✅ NEW: STRUCTURED ERROR HANDLING
+      // ========================================================================
+
       if (error.message?.includes("cancelled")) {
         logger.warn(`Job cancelled: ${error.message}`);
         await this.db.updateStatus(executionId, "cancelled", {
@@ -296,13 +405,39 @@ export class ReportExecutor {
           error: error.message,
         });
       } else {
-        logger.error(`Execution failed: ${error.message}`);
+        // Extract structured error info if available
+        const errorMessage =
+          error instanceof DProcError ? error.userMessage : error.message;
+
+        const errorCode =
+          error instanceof DProcError ? error.code : "UNKNOWN_ERROR";
+
+        logger.error(`Execution failed [${errorCode}]: ${errorMessage}`);
+
+        // ✅ NEW: Log fix suggestions for DProc errors
+        if (error instanceof DProcError && error.fixes.length > 0) {
+          logger.info("How to fix:");
+          error.fixes.forEach((fix, i) => {
+            logger.info(`  ${i + 1}. ${fix}`);
+          });
+        }
+
         await this.db.updateStatus(executionId, "failed", {
           completedAt: Date.now(),
           executionTime: Date.now() - startTime,
-          error: error.message,
+          error: errorMessage,
+          // ✅ Future: Store structured error data (requires schema update)
+          // errorCode,
+          // errorDetails: error instanceof DProcError
+          //   ? JSON.stringify({
+          //       fixes: error.fixes,
+          //       context: error.context,
+          //       severity: error.severity
+          //     })
+          //   : undefined
         });
       }
+
       throw error;
     } finally {
       this.activeJobs.delete(executionId);
@@ -324,10 +459,14 @@ export class ReportExecutor {
       throw new Error("Processor execution cancelled");
     }
 
+    // ✅ NEW: Better error for missing processor
     try {
       await fs.access(processorPath);
     } catch {
-      throw new Error(`Processor not found: ${processorPath}`);
+      throw new ProcessorMissingError(
+        path.basename(pipelinePath),
+        processorPath
+      );
     }
 
     const context: ProcessorContext = {

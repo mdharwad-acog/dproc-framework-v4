@@ -1,9 +1,11 @@
-// Core components
+// ✅ Export error system
+export * from "./errors/index.js";
+
+// ✅ Export validation
+export * from "./validation/index.js";
+
+// Existing exports
 export { ReportExecutor } from "./executor/index.js";
-export { DProcWorker } from "./queue/worker.js";
-export { DatabaseAdapter, ExecutionFilters } from "./db/adapter.js";
-export { SQLiteAdapter } from "./db/sqlite-adapter.js";
-export { createDatabase } from "./db/factory.js";
 export { LLMProvider } from "./llm/provider.js";
 export { TemplateRenderer } from "./template/renderer.js";
 export {
@@ -11,8 +13,7 @@ export {
   SecretsManager,
   WorkspaceManager,
 } from "./config/index.js";
-export { PipelineLoader } from "./pipeline/loader.js";
 export { CacheManager } from "./cache/index.js";
-
-// Re-export all types from @aganitha/dproc-types
-export type * from "@aganitha/dproc-types";
+export { PipelineLoader } from "./pipeline/loader.js";
+export { createDatabase } from "./db/factory.js";
+export type { DatabaseAdapter } from "./db/adapter.js";

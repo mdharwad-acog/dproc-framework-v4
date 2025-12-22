@@ -4,19 +4,67 @@ import { z } from "zod";
 // PIPELINE SPECIFICATION TYPES
 // ============================================================================
 
-// Pipeline Input Definition
-export const PipelineInputSchema = z.object({
+// Input definition schema (what's in spec.yml)
+export const InputDefinitionSchema = z.object({
   name: z.string(),
-  type: z.enum(["text", "number", "select", "file", "boolean"]),
+  type: z.enum(["text", "number", "select", "boolean", "array"]),
   label: z.string(),
   required: z.boolean().default(false),
-  default: z.any().optional(),
-  options: z.array(z.string()).optional(),
+  default: z.union([z.string(), z.number(), z.boolean()]).optional(),
   placeholder: z.string().optional(),
   description: z.string().optional(),
+  options: z.array(z.string()).optional(),
 });
 
-export type PipelineInput = z.infer<typeof PipelineInputSchema>;
+// ✅ Input VALUES schema (what users send) - with auto-coercion
+export const InputValueSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.null(),
+  z.undefined(),
+]);
+
+// ✅ Schema for the entire inputs object - coerce on the fly
+export const ExecutionInputsSchema = z
+  .record(z.string(), InputValueSchema)
+  .transform((inputs) => {
+    // Auto-convert string numbers to actual numbers
+    const normalized: Record<string, any> = {};
+
+    for (const [key, value] of Object.entries(inputs)) {
+      if (typeof value === "string") {
+        // Try to convert to number if it looks like a number
+        const asNumber = Number(value);
+        if (!isNaN(asNumber) && value.trim() !== "") {
+          normalized[key] = asNumber;
+        } else {
+          normalized[key] = value;
+        }
+      } else {
+        normalized[key] = value;
+      }
+    }
+
+    return normalized;
+  });
+
+export type InputDefinition = z.infer<typeof InputDefinitionSchema>;
+export type ExecutionInputs = z.infer<typeof ExecutionInputsSchema>;
+
+// Pipeline Input Definition
+// export const PipelineInputSchema = z.object({
+//   name: z.string(),
+//   type: z.enum(["text", "number", "select", "file", "boolean"]),
+//   label: z.string(),
+//   required: z.boolean().default(false),
+//   default: z.any().optional(),
+//   options: z.array(z.string()).optional(),
+//   placeholder: z.string().optional(),
+//   description: z.string().optional(),
+// });
+
+// export type PipelineInput = z.infer<typeof PipelineInputSchema>;
 
 // Pipeline Specification (spec.yml)
 export const PipelineSpecSchema = z.object({
@@ -25,9 +73,9 @@ export const PipelineSpecSchema = z.object({
     version: z.string(),
     description: z.string(),
   }),
-  inputs: z.array(PipelineInputSchema),
-  outputs: z.array(z.enum(["md", "pdf", "html", "pptx", "docx"])),
-  variables: z.record(z.string(), z.any()).optional(),
+  inputs: z.array(InputDefinitionSchema),
+  outputs: z.array(z.string()),
+  variables: z.record(z.any()).optional(),
 });
 
 export type PipelineSpec = z.infer<typeof PipelineSpecSchema>;

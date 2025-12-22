@@ -10,6 +10,13 @@ import path from "path";
 import { SecretsManager } from "./secrets.js";
 import "dotenv/config";
 
+// ✅ NEW: Import errors
+import {
+  PipelineSpecMissingError,
+  InvalidPipelineError,
+  APIKeyMissingError,
+} from "../errors/index.js";
+
 export class ConfigLoader {
   private secretsManager = new SecretsManager();
 
@@ -39,24 +46,85 @@ export class ConfigLoader {
 
   /**
    * Load pipeline spec.yml
+   * ✅ NOW WITH STRUCTURED ERRORS
    */
   async loadPipelineSpec(pipelinePath: string): Promise<PipelineSpec> {
     const specPath = path.join(pipelinePath, "spec.yml");
-    const content = await readFile(specPath, "utf-8");
-    return parse(content) as PipelineSpec;
+
+    try {
+      const content = await readFile(specPath, "utf-8");
+      const spec = parse(content) as PipelineSpec;
+
+      // ✅ NEW: Basic validation
+      if (!spec.pipeline?.name) {
+        throw new InvalidPipelineError(path.basename(pipelinePath), [
+          "Missing pipeline.name in spec.yml",
+        ]);
+      }
+
+      return spec;
+    } catch (error: any) {
+      // ✅ NEW: Better error for missing file
+      if (error.code === "ENOENT") {
+        throw new PipelineSpecMissingError(
+          path.basename(pipelinePath),
+          specPath
+        );
+      }
+
+      // Re-throw DProc errors
+      if (error.name === "DProcError") {
+        throw error;
+      }
+
+      // Wrap YAML parsing errors
+      throw new InvalidPipelineError(path.basename(pipelinePath), [
+        `Failed to parse spec.yml: ${error.message}`,
+      ]);
+    }
   }
 
   /**
    * Load pipeline config.yml
+   * ✅ NOW WITH STRUCTURED ERRORS
    */
   async loadPipelineConfig(pipelinePath: string): Promise<LLMConfig> {
     const configPath = path.join(pipelinePath, "config.yml");
-    const content = await readFile(configPath, "utf-8");
-    return parse(content) as LLMConfig;
+
+    try {
+      const content = await readFile(configPath, "utf-8");
+      const config = parse(content) as LLMConfig;
+
+      // ✅ NEW: Basic validation
+      if (!config.llm?.provider) {
+        throw new InvalidPipelineError(path.basename(pipelinePath), [
+          "Missing llm.provider in config.yml",
+        ]);
+      }
+
+      if (!config.llm?.model) {
+        throw new InvalidPipelineError(path.basename(pipelinePath), [
+          "Missing llm.model in config.yml",
+        ]);
+      }
+
+      return config;
+    } catch (error: any) {
+      // Re-throw DProc errors
+      if (error.name === "DProcError") {
+        throw error;
+      }
+
+      // Wrap other errors
+      throw new InvalidPipelineError(path.basename(pipelinePath), [
+        `Failed to load config.yml: ${error.message}`,
+      ]);
+    }
   }
 
   /**
    * Get API key with priority: ENV > secrets.json
+   * ✅ NOW WITH STRUCTURED ERRORS
    */
   getApiKey(provider: "openai" | "anthropic" | "google"): string {
     const providerUpper = provider.toUpperCase();
@@ -64,31 +132,37 @@ export class ConfigLoader {
 
     // Priority 1: Environment variable
     const envKey = process.env[envVarName];
-    if (envKey) {
+    if (envKey && envKey.trim() !== "") {
       return envKey;
     }
 
     // Priority 2: Secrets file
     const secretsPath = this.secretsManager.getSecretsPath();
-
     try {
       if (!existsSync(secretsPath)) {
-        throw new Error("Secrets file not found");
+        // ✅ NEW: Throw structured error
+        throw new APIKeyMissingError(provider);
       }
 
       const secretsContent = readFileSync(secretsPath, "utf-8");
       const parsed = JSON.parse(secretsContent);
 
       if (parsed.apiKeys && parsed.apiKeys[provider]) {
-        return parsed.apiKeys[provider];
+        const key = parsed.apiKeys[provider];
+        if (key && key.trim() !== "") {
+          return key;
+        }
       }
     } catch (error: any) {
-      // Fall through to error message
+      // If it's already a DProc error, re-throw
+      if (error.name === "DProcError") {
+        throw error;
+      }
+      // Otherwise fall through to missing key error
     }
 
-    throw new Error(
-      `No API key found for ${provider}. Set ${envVarName} environment variable or run 'dproc configure'`
-    );
+    // ✅ NEW: Throw structured error instead of generic Error
+    throw new APIKeyMissingError(provider);
   }
 }
 

@@ -1,15 +1,17 @@
 #!/usr/bin/env node
+
 import { Command } from "commander";
 import {
   ReportExecutor,
   PipelineLoader,
   SecretsManager,
   WorkspaceManager,
+  DProcError, // ✅ NEW
 } from "@aganitha/dproc-core";
 import { createDatabase } from "@aganitha/dproc-core";
 import path from "path";
 import { mkdir, readFile, readdir, stat, writeFile } from "fs/promises";
-import type { PipelineStats } from "@aganitha/dproc-core";
+import type { PipelineStats } from "@aganitha/dproc-types";
 import chalk from "chalk";
 import inquirer from "inquirer";
 
@@ -23,15 +25,85 @@ const packageJson = JSON.parse(
 // Initialize workspace manager
 const workspace = new WorkspaceManager();
 
+// ========================================================================
+// ✅ NEW: BEAUTIFUL ERROR HANDLER UTILITIES
+// ========================================================================
+
+/**
+ * Display beautiful, user-friendly errors in the CLI
+ */
+function displayError(error: any): void {
+  console.error("\n"); // Spacing
+
+  if (error instanceof DProcError) {
+    // ✅ Structured DProc error - beautiful display
+    console.error(chalk.red.bold(`✗ ${error.name}`));
+    console.error(chalk.white(error.userMessage));
+
+    // Show error code
+    console.error(chalk.dim(`\nError Code: ${error.code}`));
+
+    // Show context if available
+    if (error.context && Object.keys(error.context).length > 0) {
+      console.error(chalk.dim("\nContext:"));
+      Object.entries(error.context).forEach(([key, value]) => {
+        console.error(chalk.dim(`  ${key}: ${value}`));
+      });
+    }
+
+    // Show fix suggestions
+    if (error.fixes.length > 0) {
+      console.error(chalk.yellow("\n💡 How to fix:"));
+      error.fixes.forEach((fix, i) => {
+        console.error(chalk.yellow(`  ${i + 1}. ${fix}`));
+      });
+    }
+
+    // Show technical details in debug mode
+    if (process.env.DEBUG || process.env.DPROC_DEBUG) {
+      console.error(chalk.dim("\nTechnical Details:"));
+      console.error(chalk.dim(error.message));
+      if (error.cause) {
+        console.error(chalk.dim("\nCause:"));
+        console.error(chalk.dim(error.cause));
+      }
+    }
+  } else {
+    // Generic error - simple display
+    console.error(chalk.red.bold("✗ Error:"));
+    console.error(chalk.white(error.message || String(error)));
+
+    if (process.env.DEBUG || process.env.DPROC_DEBUG) {
+      console.error(chalk.dim("\nStack:"));
+      console.error(chalk.dim(error.stack));
+    }
+  }
+
+  console.error("\n"); // Spacing
+}
+
+/**
+ * Display helpful tip for debugging
+ */
+function showDebugTip(): void {
+  if (!process.env.DEBUG && !process.env.DPROC_DEBUG) {
+    console.error(chalk.dim("💡 Tip: Run with DEBUG=true for more details\n"));
+  }
+}
+
+// ========================================================================
+// PROGRAM SETUP
+// ========================================================================
+
 program
   .name("dproc")
   .description("DProc Framework - Build AI-powered report pipelines")
   .version(packageJson.version);
 
-// ... (keep all the init and run commands as they are) ...
-/**
- * Initialize a new pipeline
- */
+// ========================================================================
+// COMMAND: init
+// ========================================================================
+
 program
   .command("init <name>")
   .description("Create a new pipeline with boilerplate structure")
@@ -47,8 +119,7 @@ program
   )
   .action(async (name, options) => {
     try {
-      console.log(`🚀 Creating new pipeline: ${name}\n`);
-
+      console.log(chalk.cyan(`🚀 Creating new pipeline: ${name}\n`));
       const pipelinePath = path.join(process.cwd(), "pipelines", name);
 
       // Create directory structure
@@ -74,7 +145,6 @@ inputs:
     label: Input Field
     required: true
     placeholder: Enter value...
-
   - name: maxResults
     type: number
     label: Maximum Results
@@ -90,9 +160,8 @@ variables:
   tone: professional
   detailLevel: comprehensive
 `;
-
       await writeFile(path.join(pipelinePath, "spec.yml"), spec);
-      console.log("✓ Created spec.yml");
+      console.log(chalk.green("✓ Created spec.yml"));
 
       // Create config.yml
       const config = `llm:
@@ -109,9 +178,8 @@ execution:
   timeoutMinutes: 30
   retryAttempts: 3
 `;
-
       await writeFile(path.join(pipelinePath, "config.yml"), config);
-      console.log("✓ Created config.yml");
+      console.log(chalk.green("✓ Created config.yml"));
 
       // Create processor.ts
       const processor = `import type { ProcessorContext, ProcessorResult } from "@dproc/types";
@@ -120,11 +188,10 @@ execution:
  * Data processor for ${name} pipeline
  */
 export default async function processor(
-  inputs: Record<string, any>,
+  inputs: Record<string, unknown>,
   context: ProcessorContext
 ): Promise<ProcessorResult> {
   const startTime = Date.now();
-
   context.logger.info("Starting data processing...");
 
   // TODO: Implement your data fetching and processing logic here
@@ -151,9 +218,8 @@ export default async function processor(
   };
 }
 `;
-
       await writeFile(path.join(pipelinePath, "processor.ts"), processor);
-      console.log("✓ Created processor.ts");
+      console.log(chalk.green("✓ Created processor.ts"));
 
       // Create prompt template
       const prompt = `# ${options.description}
@@ -181,88 +247,66 @@ Return JSON format:
 }
 \`\`\`
 `;
-
       await writeFile(
         path.join(pipelinePath, "prompts", "main.prompt.md"),
         prompt
       );
-      console.log("✓ Created prompts/main.prompt.md");
+      console.log(chalk.green("✓ Created prompts/main.prompt.md"));
 
       // Create HTML template
       const htmlTemplate = `<!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ inputs.input1 }} - Report</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 40px 20px;
-            line-height: 1.6;
-            color: #333;
-        }
-        h1 { color: #2563eb; border-bottom: 3px solid #2563eb; padding-bottom: 10px; }
-        h2 { color: #1d4ed8; margin-top: 30px; }
-        .metadata { background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0; }
-        .summary { background: #eff6ff; padding: 20px; border-left: 4px solid #3b82f6; }
-        ul { list-style: none; padding: 0; }
-        li { padding: 8px 0; padding-left: 25px; position: relative; }
-        li:before { content: "•"; position: absolute; left: 0; color: #3b82f6; font-weight: bold; }
-    </style>
+  <title>{{ inputs.input1 }} - Report</title>
+  <style>
+    body { font-family: Arial; max-width: 800px; margin: 0 auto; padding: 20px; }
+    .summary { background: #f0f0f0; padding: 15px; border-radius: 5px; }
+    .metadata { color: #666; font-size: 12px; }
+  </style>
 </head>
 <body>
-    <h1>{{ llm.summary }}</h1>
+  <h1>{{ llm.summary }}</h1>
+  
+  <div class="metadata">
+    <p>Generated: {{ metadata.timestamp }}</p>
+    <p>Input: {{ inputs.input1 }}</p>
+    <p>Model: {{ metadata.model }}</p>
+    <p>Execution Time: {{ metadata.executionTime }}ms</p>
+  </div>
 
-    <div class="metadata">
-        <p><strong>Generated:</strong> {{ metadata.timestamp }}</p>
-        <p><strong>Input:</strong> {{ inputs.input1 }}</p>
-        <p><strong>Model:</strong> {{ metadata.model }}</p>
-        <p><strong>Execution Time:</strong> {{ metadata.executionTime }}ms</p>
-    </div>
+  <h2>Executive Summary</h2>
+  <div class="summary">{{ llm.summary }}</div>
 
-    <div class="summary">
-        <h2>Executive Summary</h2>
-        <p>{{ llm.summary }}</p>
-    </div>
+  <h2>Key Points</h2>
+  <ul>
+  {% for point in llm.keyPoints %}
+    <li>{{ point }}</li>
+  {% endfor %}
+  </ul>
 
-    <h2>Key Points</h2>
-    <ul>
-    {% for point in llm.keyPoints %}
-        <li>{{ point }}</li>
-    {% endfor %}
-    </ul>
+  <h2>Analysis</h2>
+  <p>{{ llm.analysis }}</p>
 
-    <h2>Analysis</h2>
-    <p>{{ llm.analysis }}</p>
-
-    <h2>Recommendations</h2>
-    <ul>
-    {% for rec in llm.recommendations %}
-        <li>{{ rec }}</li>
-    {% endfor %}
-    </ul>
-
-    <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280;">
-        <p>Generated by DProc Framework v{{ metadata.version }}</p>
-    </footer>
+  <h2>Recommendations</h2>
+  <ul>
+  {% for rec in llm.recommendations %}
+    <li>{{ rec }}</li>
+  {% endfor %}
+  </ul>
 </body>
 </html>
 `;
-
       await writeFile(
         path.join(pipelinePath, "templates", "report.html.njk"),
         htmlTemplate
       );
-      console.log("✓ Created templates/report.html.njk");
+      console.log(chalk.green("✓ Created templates/report.html.njk"));
 
       // Create Markdown template
       const mdTemplate = `# {{ llm.summary }}
 
-**Generated:** {{ metadata.timestamp }}  
-**Input:** {{ inputs.input1 }}  
+**Generated:** {{ metadata.timestamp }}
+**Input:** {{ inputs.input1 }}
 **Model:** {{ metadata.model }}
 
 ---
@@ -291,12 +335,11 @@ Return JSON format:
 
 *Generated by DProc Framework v{{ metadata.version }}*
 `;
-
       await writeFile(
         path.join(pipelinePath, "templates", "report.md.njk"),
         mdTemplate
       );
-      console.log("✓ Created templates/report.md.njk");
+      console.log(chalk.green("✓ Created templates/report.md.njk"));
 
       // Create README
       const readme = `# ${name}
@@ -332,30 +375,33 @@ pnpm dproc validate ${name}
 pnpm dproc test ${name}
 \`\`\`
 `;
-
       await writeFile(path.join(pipelinePath, "README.md"), readme);
-      console.log("✓ Created README.md");
+      console.log(chalk.green("✓ Created README.md"));
 
-      console.log("\n✅ Pipeline created successfully!\n");
-      console.log("📂 Location:", pipelinePath);
-      console.log("\n📝 Next steps:");
-      console.log(`  1. cd pipelines/${name}`);
-      console.log("  2. Edit spec.yml to define your inputs");
-      console.log("  3. Implement processor.ts for data processing");
-      console.log("  4. Customize prompts and templates");
-      console.log(`  5. Test: pnpm dproc validate ${name}`);
-      console.log(`  6. Run: pnpm dproc run ${name}\n`);
+      console.log(chalk.green.bold("\n✅ Pipeline created successfully!\n"));
+      console.log(chalk.white("📂 Location:"), chalk.cyan(pipelinePath));
+      console.log(chalk.white("\n📝 Next steps:"));
+      console.log(chalk.gray(`  1. cd pipelines/${name}`));
+      console.log(chalk.gray("  2. Edit spec.yml to define your inputs"));
+      console.log(
+        chalk.gray("  3. Implement processor.ts for data processing")
+      );
+      console.log(chalk.gray("  4. Customize prompts and templates"));
+      console.log(chalk.gray(`  5. Test: pnpm dproc validate ${name}`));
+      console.log(chalk.gray(`  6. Run: pnpm dproc run ${name}\n`));
     } catch (error: any) {
-      console.error("✗ Error:", error.message);
+      displayError(error);
+      showDebugTip();
       process.exit(1);
     }
   });
 
-/**
- * Run pipeline interactively
- */
+// ========================================================================
+// COMMAND: run
+// ========================================================================
+
 program
-  .command("run <pipeline>")
+  .command("run <pipelineName>")
   .description("Run pipeline with interactive prompts")
   .option("-f, --format <format>", "Output format", "html")
   .action(async (pipelineName, options) => {
@@ -366,23 +412,30 @@ program
       // Load spec to get input definitions
       const spec = await loader.loadSpec(pipelineName);
 
-      console.log(`\n🚀 Running pipeline: ${spec.pipeline.name}`);
-      console.log(`📝 ${spec.pipeline.description}\n`);
+      console.log(chalk.cyan(`\n🚀 Running pipeline: ${spec.pipeline.name}`));
+      console.log(chalk.white(`📝 ${spec.pipeline.description}\n`));
 
       // For now, use default values or ask user to provide JSON
-      console.log("💡 Tip: Use --input flag to provide inputs as JSON");
       console.log(
-        `Example: pnpm dproc execute ${pipelineName} --input '{"field":"value"}'\n`
+        chalk.yellow("💡 Tip: Use --input flag to provide inputs as JSON")
+      );
+      console.log(
+        chalk.gray(
+          `Example: pnpm dproc execute ${pipelineName} --input '{"field":"value"}'\n`
+        )
       );
 
       // Build inputs with defaults
-      const inputs: Record<string, any> = {};
+      const inputs: Record<string, unknown> = {};
       for (const input of spec.inputs) {
         inputs[input.name] = input.default || "";
       }
 
-      console.log("Using default inputs:", JSON.stringify(inputs, null, 2));
-      console.log("\n⏳ Enqueueing job...\n");
+      console.log(
+        chalk.white("Using default inputs:"),
+        JSON.stringify(inputs, null, 2)
+      );
+      console.log(chalk.cyan("\n⏳ Enqueueing job...\n"));
 
       // Execute
       const executor = new ReportExecutor(pipelinesDir, {
@@ -400,20 +453,28 @@ program
         createdAt: Date.now(),
       });
 
-      console.log(`✅ Job enqueued: ${jobId}`);
-      console.log(`\n📊 Monitor: pnpm dproc history ${pipelineName}`);
-      console.log(`📁 Output: pipelines/${pipelineName}/output/reports/\n`);
+      console.log(chalk.green(`✅ Job enqueued: ${jobId}`));
+      console.log(
+        chalk.white(`\n📊 Monitor:`),
+        chalk.cyan(`pnpm dproc history ${pipelineName}`)
+      );
+      console.log(
+        chalk.white(`📁 Output:`),
+        chalk.cyan(`pipelines/${pipelineName}/output/reports/\n`)
+      );
     } catch (error: any) {
-      console.error("✗ Error:", error.message);
+      displayError(error);
+      showDebugTip();
       process.exit(1);
     }
   });
 
-/**
- * Execute a pipeline
- */
+// ========================================================================
+// COMMAND: execute
+// ========================================================================
+
 program
-  .command("execute <pipeline>")
+  .command("execute <pipelineName>")
   .description("Execute a pipeline and generate report")
   .option("-i, --input <json>", "Input parameters as JSON string")
   .option(
@@ -428,10 +489,22 @@ program
   )
   .action(async (pipelineName, options) => {
     try {
-      console.log(`🚀 Executing pipeline: ${pipelineName}`);
+      console.log(chalk.cyan(`🚀 Executing pipeline: ${pipelineName}`));
 
       // Parse inputs
-      const inputs = options.input ? JSON.parse(options.input) : {};
+      let inputs: Record<string, unknown> = {};
+      if (options.input) {
+        try {
+          inputs = JSON.parse(options.input);
+        } catch (e) {
+          console.error(chalk.red("\n✗ Invalid JSON input"));
+          console.error(chalk.white("Provided:"), chalk.gray(options.input));
+          console.error(
+            chalk.yellow('\n💡 Example: --input \'{"field":"value"}\'\n')
+          );
+          process.exit(1);
+        }
+      }
 
       // Create executor
       const executor = new ReportExecutor(workspace.getPipelinesDir(), {
@@ -450,26 +523,30 @@ program
         createdAt: Date.now(),
       });
 
-      console.log(`✓ Job enqueued: ${jobId}`);
-      console.log(`\n📊 Monitor: dproc history`);
-      console.log(`📁 Output: ${workspace.getOutputsDir()}/${pipelineName}/\n`);
+      console.log(chalk.green(`✓ Job enqueued: ${jobId}`));
+      console.log(chalk.white(`\n📊 Monitor:`), chalk.cyan("dproc history"));
+      console.log(
+        chalk.white(`📁 Output:`),
+        chalk.cyan(`${workspace.getOutputsDir()}/${pipelineName}/\n`)
+      );
     } catch (error: any) {
-      console.error("✗ Error:", error.message);
+      displayError(error);
+      showDebugTip();
       process.exit(1);
     }
   });
 
-/**
- * List available pipelines
- */
+// ========================================================================
+// COMMAND: list
+// ========================================================================
+
 program
   .command("list")
   .description("List all available pipelines")
   .action(async () => {
     try {
       const pipelinesDir = workspace.getPipelinesDir();
-
-      console.log("\n📂 Available Pipelines:\n");
+      console.log(chalk.cyan("\n📂 Available Pipelines:\n"));
 
       const entries = await readdir(pipelinesDir);
       const pipelines = [];
@@ -477,6 +554,7 @@ program
       for (const entry of entries) {
         const entryPath = path.join(pipelinesDir, entry);
         const stats = await stat(entryPath);
+
         if (stats.isDirectory()) {
           try {
             const loader = new PipelineLoader(pipelinesDir);
@@ -489,38 +567,44 @@ program
       }
 
       if (pipelines.length === 0) {
-        console.log("  No pipelines found.");
-        console.log("\n💡 Create one with: dproc init my-pipeline\n");
+        console.log(chalk.gray("  No pipelines found."));
+        console.log(
+          chalk.yellow("\n💡 Create one with: dproc init my-pipeline\n")
+        );
         return;
       }
 
       for (const pipeline of pipelines) {
         if (pipeline.spec) {
-          console.log(`  📦 ${pipeline.name}`);
-          console.log(`     ${pipeline.spec.pipeline.description}`);
-          console.log(`     v${pipeline.spec.pipeline.version}`);
+          console.log(chalk.white(`  📦 ${chalk.cyan(pipeline.name)}`));
+          console.log(chalk.gray(`     ${pipeline.spec.pipeline.description}`));
+          console.log(chalk.gray(`     v${pipeline.spec.pipeline.version}`));
         } else {
-          console.log(`  📦 ${pipeline.name} (invalid configuration)`);
+          console.log(
+            chalk.white(`  📦 ${chalk.red(pipeline.name)}`),
+            chalk.red("(invalid configuration)")
+          );
         }
-        console.log();
       }
 
-      console.log(`Total: ${pipelines.length} pipeline(s)\n`);
+      console.log(chalk.white(`\nTotal: ${pipelines.length} pipeline(s)\n`));
     } catch (error: any) {
-      console.error("✗ Error:", error.message);
+      displayError(error);
+      showDebugTip();
       process.exit(1);
     }
   });
 
-/**
- * Validate pipeline structure
- */
+// ========================================================================
+// COMMAND: validate
+// ========================================================================
+
 program
-  .command("validate <pipeline>")
+  .command("validate <pipelineName>")
   .description("Validate pipeline configuration and structure")
   .action(async (pipelineName) => {
     try {
-      console.log(`🔍 Validating pipeline: ${pipelineName}\n`);
+      console.log(chalk.cyan(`🔍 Validating pipeline: ${pipelineName}\n`));
 
       const pipelinesDir = workspace.getPipelinesDir();
       const loader = new PipelineLoader(pipelinesDir);
@@ -528,33 +612,35 @@ program
       const validation = await loader.validatePipeline(pipelineName);
 
       if (validation.valid) {
-        console.log("✅ Pipeline structure is valid\n");
+        console.log(chalk.green("✅ Pipeline structure is valid\n"));
 
         // Show pipeline info
         const spec = await loader.loadSpec(pipelineName);
-        console.log("📋 Pipeline Information:");
-        console.log(`   Name: ${spec.pipeline.name}`);
-        console.log(`   Version: ${spec.pipeline.version}`);
-        console.log(`   Inputs: ${spec.inputs.length}`);
-        console.log(`   Outputs: ${spec.outputs.join(", ")}`);
+        console.log(chalk.white("📋 Pipeline Information:"));
+        console.log(chalk.gray(`  Name: ${spec.pipeline.name}`));
+        console.log(chalk.gray(`  Version: ${spec.pipeline.version}`));
+        console.log(chalk.gray(`  Inputs: ${spec.inputs.length}`));
+        console.log(chalk.gray(`  Outputs: ${spec.outputs.join(", ")}`));
         console.log();
       } else {
-        console.log("❌ Pipeline validation failed:\n");
+        console.log(chalk.red("❌ Pipeline validation failed:\n"));
         validation.errors.forEach((error) => {
-          console.log(`   ✗ ${error}`);
+          console.log(chalk.red(`  ✗ ${error}`));
         });
         console.log();
         process.exit(1);
       }
     } catch (error: any) {
-      console.error("✗ Error:", error.message);
+      displayError(error);
+      showDebugTip();
       process.exit(1);
     }
   });
 
-/**
- * Show pipeline statistics
- */
+// ========================================================================
+// COMMAND: stats
+// ========================================================================
+
 program
   .command("stats [pipeline]")
   .description("Show execution statistics")
@@ -566,59 +652,76 @@ program
         const stats = (await db.getPipelineStats(
           pipelineName
         )) as PipelineStats;
+
         if (!stats) {
           console.log(
-            `\n📊 No statistics found for pipeline: ${pipelineName}\n`
+            chalk.yellow(
+              `\n📊 No statistics found for pipeline: ${pipelineName}\n`
+            )
           );
           await db.close();
           return;
         }
 
-        console.log(`\n📊 Statistics for ${pipelineName}:\n`);
-        console.log(`  Total Executions: ${stats.totalExecutions}`);
-        console.log(`  Successful: ${stats.successfulExecutions}`);
-        console.log(`  Failed: ${stats.failedExecutions}`);
+        console.log(chalk.cyan(`\n📊 Statistics for ${pipelineName}:\n`));
         console.log(
-          `  Success Rate: ${((stats.successfulExecutions / stats.totalExecutions) * 100).toFixed(1)}%`
+          chalk.white(`  Total Executions: ${stats.totalExecutions}`)
+        );
+        console.log(chalk.green(`  Successful: ${stats.successfulExecutions}`));
+        console.log(chalk.red(`  Failed: ${stats.failedExecutions}`));
+        console.log(
+          chalk.white(
+            `  Success Rate: ${((stats.successfulExecutions / stats.totalExecutions) * 100).toFixed(1)}%`
+          )
         );
         console.log(
-          `  Avg Execution Time: ${stats.avgExecutionTime.toFixed(2)}ms`
+          chalk.white(
+            `  Avg Execution Time: ${stats.avgExecutionTime.toFixed(2)}ms`
+          )
         );
         console.log(
-          `  Total Tokens Used: ${stats.totalTokensUsed.toLocaleString()}`
+          chalk.white(
+            `  Total Tokens Used: ${stats.totalTokensUsed.toLocaleString()}`
+          )
         );
+        console.log();
       } else {
         const allStats = (await db.getPipelineStats()) as PipelineStats[];
-
-        console.log("\n📊 Global Statistics:\n");
+        console.log(chalk.cyan("\n📊 Global Statistics:\n"));
 
         if (allStats.length === 0) {
-          console.log("  No execution history found.\n");
+          console.log(chalk.gray("  No execution history found.\n"));
           await db.close();
           return;
         }
 
         for (const stats of allStats) {
-          console.log(`  📦 ${stats.pipelineName}:`);
-          console.log(`     Executions: ${stats.totalExecutions}`);
+          console.log(chalk.white(`  📦 ${chalk.cyan(stats.pipelineName)}:`));
+          console.log(chalk.gray(`     Executions: ${stats.totalExecutions}`));
           console.log(
-            `     Success Rate: ${((stats.successfulExecutions / stats.totalExecutions) * 100).toFixed(1)}%`
+            chalk.gray(
+              `     Success Rate: ${((stats.successfulExecutions / stats.totalExecutions) * 100).toFixed(1)}%`
+            )
           );
-          console.log(`     Avg Time: ${stats.avgExecutionTime.toFixed(2)}ms`);
+          console.log(
+            chalk.gray(`     Avg Time: ${stats.avgExecutionTime.toFixed(2)}ms`)
+          );
         }
-      }
 
-      console.log();
+        console.log();
+      }
       await db.close();
     } catch (error: any) {
-      console.error("✗ Error:", error.message);
+      displayError(error);
+      showDebugTip();
       process.exit(1);
     }
   });
 
-/**
- * View execution history
- */
+// ========================================================================
+// COMMAND: history
+// ========================================================================
+
 program
   .command("history [pipeline]")
   .description("View execution history")
@@ -633,113 +736,145 @@ program
       });
 
       if (executions.length === 0) {
-        console.log("\n📜 No execution history found.\n");
+        console.log(chalk.yellow("\n📜 No execution history found.\n"));
         await db.close();
         return;
       }
 
-      console.log("\n📜 Execution History:\n");
+      console.log(chalk.cyan("\n📜 Execution History:\n"));
 
       for (const exec of executions) {
         const duration = exec.executionTime ? `${exec.executionTime}ms` : "N/A";
         const status =
           exec.status === "completed"
-            ? "✅"
+            ? chalk.green("✅")
             : exec.status === "failed"
-              ? "❌"
+              ? chalk.red("❌")
               : exec.status === "cancelled"
-                ? "🚫"
-                : "⏳";
+                ? chalk.yellow("🚫")
+                : chalk.blue("⏳");
+
         const date = new Date(exec.createdAt).toLocaleString();
 
-        console.log(`  ${status} ${exec.id}`);
-        console.log(`     Pipeline: ${exec.pipelineName}`);
-        console.log(`     Status: ${exec.status}`);
-        console.log(`     Duration: ${duration}`);
-        console.log(`     Created: ${date}`);
+        console.log(`  ${status} ${chalk.white(exec.id)}`);
+        console.log(chalk.gray(`     Pipeline: ${exec.pipelineName}`));
+        console.log(chalk.gray(`     Status: ${exec.status}`));
+        console.log(chalk.gray(`     Duration: ${duration}`));
+        console.log(chalk.gray(`     Created: ${date}`));
+
         if (exec.outputPath) {
-          console.log(`     Output: ${exec.outputPath}`);
+          console.log(chalk.gray(`     Output: ${exec.outputPath}`));
         }
+
         if (exec.error) {
-          console.log(`     Error: ${exec.error}`);
+          console.log(chalk.red(`     Error: ${exec.error}`));
         }
+
         console.log();
       }
 
       await db.close();
     } catch (error: any) {
-      console.error("✗ Error:", error.message);
+      displayError(error);
+      showDebugTip();
       process.exit(1);
     }
   });
+
+// ========================================================================
+// COMMAND: configure
+// ========================================================================
 
 program
   .command("configure")
   .alias("config")
   .description("Configure API keys and settings")
   .action(async () => {
-    const secretsManager = new SecretsManager();
+    try {
+      const secretsManager = new SecretsManager();
 
-    console.log(chalk.blue("\n🔐 DProc Configuration\n"));
-    console.log(
-      "API keys will be stored securely in:",
-      chalk.gray(secretsManager.getSecretsPath())
-    );
-    console.log(chalk.dim("Leave blank to skip a provider\n"));
+      console.log(chalk.blue("\n🔐 DProc Configuration\n"));
+      console.log(
+        chalk.white("API keys will be stored securely in:"),
+        chalk.gray(secretsManager.getSecretsPath())
+      );
+      console.log(chalk.dim("Leave blank to skip a provider\n"));
 
-    const answers = await inquirer.prompt([
-      {
-        type: "password",
-        name: "openai",
-        message: "OpenAI API Key:",
-        mask: "*",
-      },
-      {
-        type: "password",
-        name: "anthropic",
-        message: "Anthropic API Key:",
-        mask: "*",
-      },
-      {
-        type: "password",
-        name: "google",
-        message: "Google API Key:",
-        mask: "*",
-      },
-    ]);
+      const answers = await inquirer.prompt([
+        {
+          type: "password",
+          name: "openai",
+          message: "OpenAI API Key:",
+          mask: "*",
+        },
+        {
+          type: "password",
+          name: "anthropic",
+          message: "Anthropic API Key:",
+          mask: "*",
+        },
+        {
+          type: "password",
+          name: "google",
+          message: "Google API Key:",
+          mask: "*",
+        },
+      ]);
 
-    // Save non-empty keys
-    const secrets = await secretsManager.load();
+      // Save non-empty keys
+      const secrets = await secretsManager.load();
 
-    if (answers.openai?.trim()) {
-      secrets.apiKeys.openai = answers.openai.trim();
-    }
-    if (answers.anthropic?.trim()) {
-      secrets.apiKeys.anthropic = answers.anthropic.trim();
-    }
-    if (answers.google?.trim()) {
-      secrets.apiKeys.google = answers.google.trim();
-    }
+      if (answers.openai?.trim()) {
+        secrets.apiKeys.openai = answers.openai.trim();
+      }
 
-    await secretsManager.save(secrets);
+      if (answers.anthropic?.trim()) {
+        secrets.apiKeys.anthropic = answers.anthropic.trim();
+      }
 
-    console.log(chalk.green("\n✓ Configuration saved successfully!\n"));
+      if (answers.google?.trim()) {
+        secrets.apiKeys.google = answers.google.trim();
+      }
 
-    const savedKeys = Object.keys(secrets.apiKeys).filter(
-      (k) => secrets.apiKeys[k as keyof typeof secrets.apiKeys]
-    );
-    if (savedKeys.length > 0) {
-      console.log("Configured providers:", chalk.cyan(savedKeys.join(", ")));
+      await secretsManager.save(secrets);
+
+      console.log(chalk.green("\n✓ Configuration saved successfully!\n"));
+
+      const savedKeys = Object.keys(secrets.apiKeys).filter(
+        (k) => secrets.apiKeys[k as keyof typeof secrets.apiKeys]
+      );
+
+      if (savedKeys.length > 0) {
+        console.log(
+          chalk.white("Configured providers:"),
+          chalk.cyan(savedKeys.join(", "))
+        );
+        console.log();
+      }
+    } catch (error: any) {
+      displayError(error);
+      showDebugTip();
+      process.exit(1);
     }
   });
+
+// ========================================================================
+// COMMAND: worker
+// ========================================================================
 
 program
   .command("worker")
   .description("Start background worker (use 'dproc-worker' instead)")
   .action(() => {
-    console.log("\n💡 To start the worker, use:");
-    console.log("  dproc-worker\n");
-    console.log("This will process jobs from the queue in the background.\n");
+    console.log(chalk.yellow("\n💡 To start the worker, use:"));
+    console.log(chalk.cyan("   dproc-worker\n"));
+    console.log(
+      chalk.gray("This will process jobs from the queue in the background.\n")
+    );
   });
+
+// ========================================================================
+// PARSE COMMANDS
+// ========================================================================
 
 program.parse();
