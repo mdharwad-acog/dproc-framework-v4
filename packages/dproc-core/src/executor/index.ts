@@ -496,9 +496,17 @@ export class ReportExecutor {
     context.logger.debug(`Loading TypeScript processor: ${processorPath}`);
 
     try {
+      // Server-only: Dynamic import with file URL
       const processorUrl = pathToFileURL(processorPath).href;
       const cacheBuster = Date.now();
-      const processorModule = await import(processorUrl + "?t=" + cacheBuster);
+
+      // Use Function constructor to prevent Next.js from analyzing this import
+      // This is safe because we're only running on the server
+      const dynamicImport = new Function("url", "return import(url)");
+
+      const processorModule = await dynamicImport(
+        `${processorUrl}?t=${cacheBuster}`
+      );
 
       if (!processorModule.default) {
         throw new Error("Processor must export a default function");

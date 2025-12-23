@@ -3,8 +3,8 @@ import "server-only";
 import {
   ExecutionRepository,
   PipelineStatsRepository,
-  ExecutionFilters,
 } from "@aganitha/dproc-core";
+import type { ExecutionFilters } from "@aganitha/dproc-core/repositories";
 import { PipelineLoader } from "@aganitha/dproc-core";
 import { WorkspaceManager } from "@aganitha/dproc-core/config";
 import type {

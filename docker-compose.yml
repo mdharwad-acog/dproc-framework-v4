@@ -1,5 +1,7 @@
 services:
-  # Redis for Queue (No PostgreSQL needed - using SQLite)
+  # =============================================================================
+  # REDIS - Job Queue
+  # =============================================================================
   redis:
     image: redis:7-alpine
     container_name: dproc-redis
@@ -15,11 +17,13 @@ services:
       timeout: 5s
       retries: 5
     ports:
-      - "6379:6379" # Expose for host network worker
+      - "6379:6379" # Exposed for host network worker
     networks:
       - dproc-network
 
-  # DProc Web UI
+  # =============================================================================
+  # DPROC WEB - Next.js Web UI
+  # =============================================================================
   dproc-web:
     build:
       context: .
@@ -27,30 +31,50 @@ services:
     container_name: dproc-web
     labels:
       - "user=${USER:-mdharwad}"
-      - "description=DProc Framework - LLM Report Generation"
+      - "description=DProc Framework - LLM Report Generation Web UI"
     volumes:
+      # Shared workspace for pipelines and outputs
       - /shared/dproc-workspace:/shared/dproc-workspace
-      - ${HOME}/.dproc:/root/.dproc:ro
-      - dproc-data:/app/data # Persistent SQLite database
-    environment:
-      # Database (SQLite - stored in volume)
-      DATABASE_TYPE: sqlite
-      DATABASE_PATH: /app/data/dproc.db
 
-      # Redis
+      # Secrets file (API keys) - read-only
+      - ${HOME}/.dproc:/root/.dproc:ro
+
+      # Persistent database storage
+      - dproc-data:/app/data
+    environment:
+      # ========================================================================
+      # DATA STORAGE - JSON File Storage
+      # ========================================================================
+      DATA_DIR: /app/data
+
+      # ========================================================================
+      # WORKSPACE
+      # ========================================================================
+      DPROC_WORKSPACE: /shared/dproc-workspace
+
+      # ========================================================================
+      # REDIS CONFIGURATION
+      # ========================================================================
       REDIS_HOST: redis
       REDIS_PORT: 6379
 
-      # Workspace
-      DPROC_WORKSPACE: /shared/dproc-workspace
-
-      # Node
+      # ========================================================================
+      # NODE CONFIGURATION
+      # ========================================================================
       NODE_ENV: production
 
-      # API Keys (optional - can use SecretsManager instead)
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      # ========================================================================
+      # API KEYS (Optional - can use ~/.dproc/secrets.json instead)
+      # Uncomment and set these if you want to use environment variables
+      # ========================================================================
+      # OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+
+      # ========================================================================
+      # DEBUG (Optional)
+      # ========================================================================
+      # DEBUG: ${DEBUG:-}
     depends_on:
       redis:
         condition: service_healthy
@@ -61,7 +85,7 @@ services:
           "CMD",
           "node",
           "-e",
-          "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
+          "require('http').get('http://localhost:3000/api/stats', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
         ]
       interval: 30s
       timeout: 10s
@@ -72,8 +96,10 @@ services:
     networks:
       - dproc-network
 
-  # DProc Worker (Background Job Processor)
+  # =============================================================================
+  # DPROC WORKER - Background Job Processor
   # Uses host network to bypass Crostini container networking restrictions
+  # =============================================================================
   dproc-worker:
     build:
       context: .
@@ -81,48 +107,83 @@ services:
     container_name: dproc-worker
     labels:
       - "exclude=true"
-    command: ["dproc-worker"] # Use the bin command
+    # Override default command to run worker
+    command: ["node", "/app/packages/dproc-core/bin/dproc-worker.js"]
     volumes:
+      # Shared workspace for pipelines and outputs
       - /shared/dproc-workspace:/shared/dproc-workspace
-      - ${HOME}/.dproc:/root/.dproc:ro
-      - dproc-data:/app/data # Share same SQLite database with web
-    environment:
-      # Database (SQLite - shared with web via volume)
-      DATABASE_TYPE: sqlite
-      DATABASE_PATH: /app/data/dproc.db
 
-      # Redis - connect to localhost since we're on host network
+      # Secrets file (API keys) - read-only
+      - ${HOME}/.dproc:/root/.dproc
+
+      # Share same database with web UI
+      - dproc-data:/app/data
+    environment:
+      # ========================================================================
+      # DATA STORAGE - JSON File Storage (shared with web)
+      # ========================================================================
+      DATA_DIR: /app/data
+
+      # ========================================================================
+      # WORKSPACE
+      # ========================================================================
+      DPROC_WORKSPACE: /shared/dproc-workspace
+
+      # ========================================================================
+      # REDIS CONFIGURATION - localhost since using host network
+      # ========================================================================
       REDIS_HOST: localhost
       REDIS_PORT: 6379
 
-      # Workspace
-      DPROC_WORKSPACE: /shared/dproc-workspace
-
-      # Worker Settings
+      # ========================================================================
+      # WORKER SETTINGS
+      # ========================================================================
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
 
-      # Node
+      # ========================================================================
+      # NODE CONFIGURATION
+      # ========================================================================
       NODE_ENV: production
-      DEBUG: ${DEBUG:-dproc:*}
 
-      # API Keys
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      # ========================================================================
+      # API KEYS (Optional - can use ~/.dproc/secrets.json instead)
+      # Priority: ENV vars > secrets.json
+      # ========================================================================
+      # OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+
+      # ========================================================================
+      # DEBUG (Optional)
+      # ========================================================================
+      DEBUG: ${DEBUG:-dproc:*}
     depends_on:
       redis:
         condition: service_healthy
     restart: unless-stopped
-    # Use host network to access internet directly
-    # This bypasses Chrome OS Crostini networking restrictions
+
+    # ========================================================================
+    # HOST NETWORK MODE
+    # Bypasses Chrome OS Crostini networking restrictions for direct internet
+    # access. Worker connects to Redis via localhost:6379
+    # ========================================================================
     network_mode: "host"
 
+# =============================================================================
+# VOLUMES
+# =============================================================================
 volumes:
+  # Redis persistent storage
   redis-data:
     driver: local
-  dproc-data: # Shared SQLite database volume
+
+  # Shared JSON database storage (executions, stats)
+  dproc-data:
     driver: local
 
+# =============================================================================
+# NETWORKS
+# =============================================================================
 networks:
   dproc-network:
     driver: bridge

@@ -1,6 +1,6 @@
 {
   "name": "@aganitha/dproc-core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "LLM-powered data processing framework with integrated CLI tools, queue management, and multi-provider support",
   "author": "Mjafarsadiq D <mdharwad@aganitha.ai>",
   "license": "MIT",
@@ -29,12 +29,16 @@
       "import": "./dist/executor/index.js"
     },
     "./pipeline": {
-      "types": "./dist/pipeline/loader.d.ts",
-      "import": "./dist/pipeline/loader.js"
+      "types": "./dist/pipeline/index.d.ts",
+      "import": "./dist/pipeline/index.js"
     },
     "./config": {
       "types": "./dist/config/index.d.ts",
       "import": "./dist/config/index.js"
+    },
+    "./repositories": {
+      "types": "./dist/repositories/index.d.ts",
+      "import": "./dist/repositories/index.js"
     },
     "./errors": {
       "types": "./dist/errors/index.d.ts",
