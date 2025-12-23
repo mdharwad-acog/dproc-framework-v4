@@ -37,10 +37,6 @@ export class WorkspaceManager {
     return join(this.root, "pipelines");
   }
 
-  getDatabasePath(): string {
-    return join(this.root, "dproc.db");
-  }
-
   getOutputsDir(): string {
     return join(this.root, "outputs");
   }

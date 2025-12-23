@@ -1,29 +1,5 @@
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: dproc-postgres
-    labels:
-      - "exclude=true"
-    environment:
-      POSTGRES_DB: dproc
-      POSTGRES_USER: dproc
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-dproc_secure_2024}
-      PGDATA: /var/lib/postgresql/data/pgdata
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dproc"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    ports:
-      - "5432:5432" # Expose for host network worker
-    networks:
-      - dproc-network
-
-  # Redis for Queue
+  # Redis for Queue (No PostgreSQL needed - using SQLite)
   redis:
     image: redis:7-alpine
     container_name: dproc-redis
@@ -55,9 +31,11 @@ services:
     volumes:
       - /shared/dproc-workspace:/shared/dproc-workspace
       - ${HOME}/.dproc:/root/.dproc:ro
+      - dproc-data:/app/data # Persistent SQLite database
     environment:
-      # Database
-      DATABASE_URL: postgresql://dproc:${DB_PASSWORD:-dproc_secure_2024}@postgres:5432/dproc
+      # Database (SQLite - stored in volume)
+      DATABASE_TYPE: sqlite
+      DATABASE_PATH: /app/data/dproc.db
 
       # Redis
       REDIS_HOST: redis
@@ -74,8 +52,6 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -85,7 +61,7 @@ services:
           "CMD",
           "node",
           "-e",
-          "require('http').get('http://localhost:3000/api/stats', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
+          "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
         ]
       interval: 30s
       timeout: 10s
@@ -105,13 +81,15 @@ services:
     container_name: dproc-worker
     labels:
       - "exclude=true"
-    command: ["node", "/app/packages/dproc-cli/dist/worker.js"]
+    command: ["dproc-worker"] # Use the bin command
     volumes:
       - /shared/dproc-workspace:/shared/dproc-workspace
       - ${HOME}/.dproc:/root/.dproc:ro
+      - dproc-data:/app/data # Share same SQLite database with web
     environment:
-      # Database - connect to localhost since we're on host network
-      DATABASE_URL: postgresql://dproc:${DB_PASSWORD:-dproc_secure_2024}@localhost:5432/dproc
+      # Database (SQLite - shared with web via volume)
+      DATABASE_TYPE: sqlite
+      DATABASE_PATH: /app/data/dproc.db
 
       # Redis - connect to localhost since we're on host network
       REDIS_HOST: localhost
@@ -132,8 +110,6 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -142,9 +118,9 @@ services:
     network_mode: "host"
 
 volumes:
-  postgres-data:
-    driver: local
   redis-data:
+    driver: local
+  dproc-data: # Shared SQLite database volume
     driver: local
 
 networks:

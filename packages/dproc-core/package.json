@@ -1,52 +1,111 @@
 {
   "name": "@aganitha/dproc-core",
-  "version": "0.2.1",
+  "version": "0.1.0",
+  "description": "LLM-powered data processing framework with integrated CLI tools, queue management, and multi-provider support",
+  "author": "Mjafarsadiq D <mdharwad@aganitha.ai>",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": {
-    ".": "./dist/index.js",
-    "./dist/pipeline/loader.js": "./dist/pipeline/loader.js",
-    "./dist/executor/index.js": "./dist/executor/index.js",
-    "./dist/queue/worker.js": "./dist/queue/worker.js",
-    "./dist/db/factory.js": "./dist/db/factory.js",
-    "./dist/db/adapter.js": "./dist/db/adapter.js",
-    "./dist/config/workspace.js": "./dist/config/workspace.js",
-    "./dist/template/renderer.js": "./dist/template/renderer.js",
-    "./dist/config/secrets.js": "./dist/config/secrets.js"
+  "bin": {
+    "dproc": "./bin/dproc.js",
+    "dproc-worker": "./bin/dproc-worker.js"
   },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.js"
+    },
+    "./storage": {
+      "types": "./dist/storage/index.d.ts",
+      "import": "./dist/storage/index.js"
+    },
+    "./executor": {
+      "types": "./dist/executor/index.d.ts",
+      "import": "./dist/executor/index.js"
+    },
+    "./pipeline": {
+      "types": "./dist/pipeline/loader.d.ts",
+      "import": "./dist/pipeline/loader.js"
+    },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "import": "./dist/config/index.js"
+    },
+    "./errors": {
+      "types": "./dist/errors/index.d.ts",
+      "import": "./dist/errors/index.js"
+    },
+    "./validation": {
+      "types": "./dist/validation/index.d.ts",
+      "import": "./dist/validation/index.js"
+    }
+  },
+  "files": [
+    "dist/**/*",
+    "bin/**/*",
+    "README.md"
+  ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && chmod +x bin/*.js",
     "dev": "tsc --watch",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "prepublishOnly": "pnpm run clean && pnpm run build"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.0.5",
     "@ai-sdk/google": "^1.0.8",
     "@ai-sdk/openai": "^1.0.9",
-    "@aganitha/dproc-types": "^0.2.1",
     "ai": "^4.0.38",
-    "axios": "^1.13.2",
-    "better-sqlite3": "^11.8.1",
-    "bullmq": "^5.26.3",
+    "axios": "^1.7.9",
+    "better-sqlite3": "^12.5.0",
+    "bullmq": "^5.66.1",
+    "chalk": "^5.4.1",
     "cheerio": "^1.1.2",
+    "commander": "^13.1.0",
     "csv-parse": "^6.1.0",
     "debug": "^4.3.7",
+    "dotenv": "^17.2.3",
+    "inquirer": "^13.1.0",
     "ioredis": "^5.4.2",
     "nunjucks": "^3.2.4",
+    "ora": "^8.1.1",
     "papaparse": "^5.5.3",
     "pg": "^8.16.3",
     "xml2js": "^0.6.2",
     "yaml": "^2.6.1",
-    "zod": "^3.23.8",
-    "dotenv": "^17.2.3"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
     "@types/debug": "^4.1.12",
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^22.10.0",
     "@types/nunjucks": "^3.2.6",
     "@types/papaparse": "^5.5.2",
     "@types/pg": "^8.16.0",
-    "@types/xml2js": "^0.4.14"
+    "@types/xml2js": "^0.4.14",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mdharwad-acog/dproc-framework-v4.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/mdharwad-acog/dproc-framework-v4/issues"
+  },
+  "homepage": "https://github.com/mdharwad-acog/dproc-framework-v4#readme",
+  "publishConfig": {
+    "access": "public"
   }
 }

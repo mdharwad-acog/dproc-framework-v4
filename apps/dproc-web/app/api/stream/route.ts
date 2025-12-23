@@ -2,9 +2,9 @@ import { streamText } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { PipelineLoader } from "@aganitha/dproc-core/dist/pipeline/loader.js";
-import { TemplateRenderer } from "@aganitha/dproc-core/dist/template/renderer.js";
-import { WorkspaceManager } from "@aganitha/dproc-core/dist/config/workspace.js";
+import { PipelineLoader } from "@aganitha/dproc-core";
+import { TemplateRenderer } from "@aganitha/dproc-core";
+import { WorkspaceManager } from "@aganitha/dproc-core";
 import { DProcError } from "@aganitha/dproc-core"; // ✅ NEW
 import { NextResponse } from "next/server"; // ✅ NEW
 

@@ -1,4 +1,4 @@
-import { PipelineSpec, LLMConfig } from "@aganitha/dproc-types";
+import { PipelineSpec, LLMConfig } from "../types";
 import {
   PipelineNotFoundError,
   InvalidPipelineError,

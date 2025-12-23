@@ -6,14 +6,6 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    console.log("📦 Execute API received:", body);
-    console.log(
-      "📊 Input types:",
-      Object.entries(body.inputs || {}).map(
-        ([key, val]) => `${key}: ${typeof val} = ${val}`
-      )
-    );
-
     // ✅ Basic validation
     if (!body.pipelineName) {
       return NextResponse.json(

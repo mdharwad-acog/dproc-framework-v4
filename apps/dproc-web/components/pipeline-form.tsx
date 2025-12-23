@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
-import type { PipelineSpec } from "@aganitha/dproc-types";
+import type { PipelineSpec } from "@aganitha/dproc-core";
 
 interface PipelineFormProps {
   pipeline: { name: string; spec: PipelineSpec };

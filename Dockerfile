@@ -24,7 +24,7 @@ COPY apps ./apps
 COPY tsconfig.json ./
 
 # Build all packages
-RUN pnpm --filter @aganitha/dproc-types build
+RUN pnpm --filter @aganitha/dproc-core build
 RUN pnpm --filter @aganitha/dproc-core build
 RUN pnpm --filter @aganitha/dproc-cli build
 RUN pnpm --filter dproc-web build

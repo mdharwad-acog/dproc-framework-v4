@@ -2,7 +2,7 @@ import { generateText } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import type { LLMConfig } from "@aganitha/dproc-types";
+import type { LLMConfig } from "../types";
 import { ConfigLoader } from "../config/index.js";
 
 // ✅ NEW: Import structured errors

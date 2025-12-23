@@ -1,22 +1,25 @@
 import "server-only";
 
-import { createDatabase } from "@aganitha/dproc-core/dist/db/factory.js";
-import type { DatabaseAdapter } from "@aganitha/dproc-core/dist/db/adapter.js";
-import { PipelineLoader } from "@aganitha/dproc-core/dist/pipeline/loader.js";
-import { WorkspaceManager } from "@aganitha/dproc-core/dist/config/workspace.js";
+import {
+  ExecutionRepository,
+  PipelineStatsRepository,
+  ExecutionFilters,
+} from "@aganitha/dproc-core";
+import { PipelineLoader } from "@aganitha/dproc-core";
+import { WorkspaceManager } from "@aganitha/dproc-core/config";
 import type {
   JobData,
   ExecutionRecord,
   PipelineStats,
-} from "@aganitha/dproc-types";
-import path from "path";
+} from "@aganitha/dproc-core/types";
 import { Queue } from "bullmq";
 
-// ✅ NEW: Import error types
-import { DProcError } from "@aganitha/dproc-core";
+// Import error types
+import { DProcError } from "@aganitha/dproc-core/errors";
 
 // Singleton instances
-let db: DatabaseAdapter | null = null;
+let executionRepo: ExecutionRepository | null = null;
+let statsRepo: PipelineStatsRepository | null = null;
 let loader: PipelineLoader | null = null;
 let jobQueue: Queue | null = null;
 let workspace: WorkspaceManager | null = null;
@@ -34,11 +37,18 @@ function getWorkspace() {
   return workspace;
 }
 
-function getDB() {
-  if (!db) {
-    db = createDatabase();
+function getExecutionRepo() {
+  if (!executionRepo) {
+    executionRepo = new ExecutionRepository();
   }
-  return db;
+  return executionRepo;
+}
+
+function getStatsRepo() {
+  if (!statsRepo) {
+    statsRepo = new PipelineStatsRepository();
+  }
+  return statsRepo;
 }
 
 function getLoader() {
@@ -58,7 +68,7 @@ function getJobQueue() {
   return jobQueue;
 }
 
-// ✅ NEW: Error wrapper for consistent handling
+// Error wrapper for consistent handling
 function wrapServerError(error: unknown, context: string): never {
   // If it's already a DProc error, preserve it
   if (error instanceof DProcError) {
@@ -82,7 +92,6 @@ export async function listPipelines() {
         try {
           const spec = await pipelineLoader.loadSpec(name);
           const validation = await pipelineLoader.validatePipeline(name);
-
           return {
             name,
             spec,
@@ -90,7 +99,7 @@ export async function listPipelines() {
             errors: validation.errors,
           };
         } catch (error) {
-          // ✅ Handle individual pipeline errors gracefully
+          // Handle individual pipeline errors gracefully
           return {
             name,
             spec: null,
@@ -130,7 +139,7 @@ export async function executeJob(
 ) {
   try {
     const queue = getJobQueue();
-    const database = getDB();
+    const repo = getExecutionRepo();
 
     const fullJobData: JobData = {
       ...jobData,
@@ -140,7 +149,7 @@ export async function executeJob(
 
     const executionId = `exec-${Date.now()}-${fullJobData.jobId}`;
 
-    await database.insertExecution({
+    await repo.insertExecution({
       id: executionId,
       jobId: fullJobData.jobId,
       pipelineName: fullJobData.pipelineName,
@@ -175,12 +184,11 @@ export async function executeJob(
 // Job Cancellation
 export async function cancelJob(executionId: string) {
   try {
-    const database = getDB();
-    await database.updateStatus(executionId, "cancelled", {
+    const repo = getExecutionRepo();
+    await repo.updateStatus(executionId, "cancelled", {
       completedAt: Date.now(),
       error: "Job cancelled by user",
     });
-
     return { success: true };
   } catch (error) {
     wrapServerError(error, `Failed to cancel job '${executionId}'`);
@@ -188,14 +196,10 @@ export async function cancelJob(executionId: string) {
 }
 
 // Query operations
-export async function getExecutionHistory(filters?: {
-  pipelineName?: string;
-  limit?: number;
-  status?: string;
-}) {
+export async function getExecutionHistory(filters?: ExecutionFilters) {
   try {
-    const database = getDB();
-    return database.listExecutions(filters);
+    const repo = getExecutionRepo();
+    return repo.listExecutions(filters);
   } catch (error) {
     wrapServerError(error, "Failed to get execution history");
   }
@@ -203,8 +207,8 @@ export async function getExecutionHistory(filters?: {
 
 export async function getExecutionDetails(id: string) {
   try {
-    const database = getDB();
-    return database.getExecution(id);
+    const repo = getExecutionRepo();
+    return repo.getExecution(id);
   } catch (error) {
     wrapServerError(error, `Failed to get execution details for '${id}'`);
   }
@@ -212,8 +216,8 @@ export async function getExecutionDetails(id: string) {
 
 export async function getPipelineStats(pipelineName?: string) {
   try {
-    const database = getDB();
-    return database.getPipelineStats(pipelineName);
+    const repo = getStatsRepo();
+    return repo.getPipelineStats(pipelineName);
   } catch (error) {
     wrapServerError(error, "Failed to get pipeline stats");
   }
@@ -221,8 +225,8 @@ export async function getPipelineStats(pipelineName?: string) {
 
 export async function getGlobalStats() {
   try {
-    const database = getDB();
-    const stats = (await database.getPipelineStats()) as PipelineStats[];
+    const repo = getStatsRepo();
+    const stats = (await repo.getPipelineStats()) as PipelineStats[];
 
     if (!stats || stats.length === 0) {
       return {
@@ -264,8 +268,8 @@ export async function getGlobalStats() {
 
 export async function getJobStatus(executionId: string) {
   try {
-    const database = getDB();
-    const execution = await database.getExecution(executionId);
+    const repo = getExecutionRepo();
+    const execution = await repo.getExecution(executionId);
 
     if (!execution) {
       return null;

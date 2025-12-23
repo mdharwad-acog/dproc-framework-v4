@@ -9,7 +9,14 @@ export async function GET(request: NextRequest) {
     const limit = searchParams.get("limit")
       ? parseInt(searchParams.get("limit")!)
       : undefined;
-    const status = searchParams.get("status") || undefined;
+
+    const status = searchParams.get("status") as
+      | "queued"
+      | "processing"
+      | "completed"
+      | "failed"
+      | "cancelled"
+      | undefined;
 
     const executions = await getExecutionHistory({
       pipelineName,

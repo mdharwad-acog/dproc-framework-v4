@@ -1,7 +1,6 @@
 import { Queue } from "bullmq";
 import { pathToFileURL } from "url";
-import { createDatabase } from "../db/factory.js";
-import type { DatabaseAdapter } from "../db/adapter.js";
+import { ExecutionRepository } from "../index.js";
 import { LLMProvider } from "../llm/provider.js";
 import { TemplateRenderer } from "../template/renderer.js";
 import { ConfigLoader } from "../config/index.js";
@@ -17,9 +16,9 @@ import type {
   TemplateContext,
   PipelineSpec,
   LLMConfig,
-} from "@aganitha/dproc-types";
+} from "../types/index.js";
 
-// ✅ NEW: Import error system and validation
+// Import error system and validation
 import {
   DProcError,
   ProcessorMissingError,
@@ -31,15 +30,13 @@ import { PipelineValidator } from "../validation/index.js";
 
 export class ReportExecutor {
   private queue: Queue;
-  private db: DatabaseAdapter;
+  private executionRepo: ExecutionRepository;
   private llmProvider: LLMProvider;
   private templateRenderer: TemplateRenderer;
   private configLoader: ConfigLoader;
   private cacheStore: CacheManager;
   private workspace: WorkspaceManager;
   private activeJobs = new Map<string, AbortController>();
-
-  // ✅ NEW: Add validator
   private validator: PipelineValidator;
 
   constructor(
@@ -47,14 +44,12 @@ export class ReportExecutor {
     redisConfig: any
   ) {
     this.queue = new Queue("dproc-jobs", { connection: redisConfig });
-    this.db = createDatabase();
+    this.executionRepo = new ExecutionRepository();
     this.llmProvider = new LLMProvider();
     this.templateRenderer = new TemplateRenderer();
     this.configLoader = new ConfigLoader();
     this.cacheStore = new CacheManager();
     this.workspace = new WorkspaceManager();
-
-    // ✅ NEW: Initialize validator
     this.validator = new PipelineValidator();
   }
 
@@ -63,7 +58,6 @@ export class ReportExecutor {
    */
   async cancelJob(executionId: string): Promise<boolean> {
     const controller = this.activeJobs.get(executionId);
-
     if (!controller) {
       console.log(`[${executionId}] Job not found or already completed`);
       return false;
@@ -73,11 +67,10 @@ export class ReportExecutor {
     controller.abort();
     this.activeJobs.delete(executionId);
 
-    await this.db.updateStatus(executionId, "cancelled", {
+    await this.executionRepo.updateStatus(executionId, "cancelled", {
       completedAt: Date.now(),
       error: "Job cancelled by user",
     });
-
     return true;
   }
 
@@ -95,7 +88,7 @@ export class ReportExecutor {
       },
     });
 
-    await this.db.insertExecution({
+    await this.executionRepo.insertExecution({
       id: `exec-${Date.now()}`,
       jobId: job.id!,
       pipelineName: jobData.pipelineName,
@@ -112,14 +105,11 @@ export class ReportExecutor {
 
   /**
    * Main execution flow - called by worker
-   * ✅ NOW WITH VALIDATION & STRUCTURED ERROR HANDLING
    */
   async execute(jobData: JobData): Promise<void> {
     const startTime = Date.now();
-
-    const executions = await this.db.listExecutions({ limit: 1000 });
+    const executions = await this.executionRepo.listExecutions({ limit: 1000 });
     const existingExecution = executions.find((e) => e.jobId === jobData.jobId);
-
     const executionId = existingExecution
       ? existingExecution.id
       : `exec-${Date.now()}-${jobData.jobId}`;
@@ -142,7 +132,7 @@ export class ReportExecutor {
       }
 
       if (!existingExecution) {
-        await this.db.insertExecution({
+        await this.executionRepo.insertExecution({
           id: executionId,
           jobId: jobData.jobId,
           pipelineName: jobData.pipelineName,
@@ -155,7 +145,7 @@ export class ReportExecutor {
           startedAt: Date.now(),
         });
       } else {
-        await this.db.updateStatus(executionId, "processing", {
+        await this.executionRepo.updateStatus(executionId, "processing", {
           startedAt: Date.now(),
         });
       }
@@ -179,11 +169,10 @@ export class ReportExecutor {
       }
 
       // ========================================================================
-      // ✅ NEW: PRE-EXECUTION VALIDATION WITH NORMALIZATION
+      // PRE-EXECUTION VALIDATION WITH NORMALIZATION
       // ========================================================================
       logger.info("Validating execution requirements...");
       const outputDir = path.join(pipelinePath, "output", "reports");
-
       const validationResult = await this.validator.validateBeforeExecution(
         jobData.pipelineName,
         spec,
@@ -195,7 +184,7 @@ export class ReportExecutor {
       // Throw if validation fails (structured errors)
       this.validator.throwIfInvalid(validationResult, jobData.pipelineName);
 
-      // ✅ USE NORMALIZED INPUTS for the rest of execution
+      // USE NORMALIZED INPUTS for the rest of execution
       if (validationResult.normalizedInputs) {
         jobData.inputs = validationResult.normalizedInputs;
       }
@@ -203,10 +192,9 @@ export class ReportExecutor {
       logger.info("✓ Validation passed");
 
       // ========================================================================
-      // STEP 2: Execute data processor (with better error handling)
+      // STEP 2: Execute data processor
       // ========================================================================
       logger.info("Executing data processor...");
-
       let processorResult: ProcessorResult;
       try {
         processorResult = await this.executeProcessor(
@@ -216,10 +204,10 @@ export class ReportExecutor {
           abortController.signal
         );
       } catch (error: any) {
-        // ✅ NEW: Wrap processor errors with context
         if (error instanceof DProcError) {
-          throw error; // Already structured
+          throw error;
         }
+
         throw new ProcessingError(
           jobData.pipelineName,
           "data-processor",
@@ -243,7 +231,6 @@ export class ReportExecutor {
       // STEP 3: Load and render prompt templates
       // ========================================================================
       logger.info("Rendering prompts...");
-
       let prompts: Record<string, string>;
       try {
         prompts = await this.loadPrompts(pipelinePath);
@@ -257,7 +244,6 @@ export class ReportExecutor {
       }
 
       const renderedPrompts: Record<string, string> = {};
-
       for (const [name, template] of Object.entries(prompts)) {
         try {
           renderedPrompts[name] = this.templateRenderer.renderPrompt(template, {
@@ -279,10 +265,9 @@ export class ReportExecutor {
       }
 
       // ========================================================================
-      // STEP 4: LLM Enrichment with structured JSON extraction
+      // STEP 4: LLM Enrichment
       // ========================================================================
       logger.info("Calling LLM for enrichment...");
-
       let llmResult: any;
       try {
         llmResult = await this.llmProvider.generate(config.llm, {
@@ -290,10 +275,10 @@ export class ReportExecutor {
           extractJson: true,
         });
       } catch (error: any) {
-        // LLM provider already throws structured errors
         if (error instanceof DProcError) {
           throw error;
         }
+
         throw new ProcessingError(
           jobData.pipelineName,
           "llm-enrichment",
@@ -319,7 +304,7 @@ export class ReportExecutor {
       logger.info(`LLM tokens used: ${llmResult.usage?.totalTokens}`);
 
       // ========================================================================
-      // STEP 5: Build complete template context
+      // STEP 5: Build template context
       // ========================================================================
       const templateContext: TemplateContext = {
         inputs: jobData.inputs,
@@ -340,7 +325,6 @@ export class ReportExecutor {
       // STEP 6: Render final template
       // ========================================================================
       logger.info("Rendering template...");
-
       let template: string;
       try {
         template = await this.loadTemplate(pipelinePath, jobData.outputFormat);
@@ -379,9 +363,9 @@ export class ReportExecutor {
       logger.info(`Output saved: ${outputPath}`);
 
       // ========================================================================
-      // STEP 8: Update database with success
+      // STEP 8: Update storage with success
       // ========================================================================
-      await this.db.updateStatus(executionId, "completed", {
+      await this.executionRepo.updateStatus(executionId, "completed", {
         completedAt: Date.now(),
         executionTime: Date.now() - startTime,
         outputPath,
@@ -394,27 +378,23 @@ export class ReportExecutor {
       logger.info(`✓ Execution completed in ${Date.now() - startTime}ms`);
     } catch (error: any) {
       // ========================================================================
-      // ✅ NEW: STRUCTURED ERROR HANDLING
+      // STRUCTURED ERROR HANDLING
       // ========================================================================
-
       if (error.message?.includes("cancelled")) {
         logger.warn(`Job cancelled: ${error.message}`);
-        await this.db.updateStatus(executionId, "cancelled", {
+        await this.executionRepo.updateStatus(executionId, "cancelled", {
           completedAt: Date.now(),
           executionTime: Date.now() - startTime,
           error: error.message,
         });
       } else {
-        // Extract structured error info if available
         const errorMessage =
           error instanceof DProcError ? error.userMessage : error.message;
-
         const errorCode =
           error instanceof DProcError ? error.code : "UNKNOWN_ERROR";
 
         logger.error(`Execution failed [${errorCode}]: ${errorMessage}`);
 
-        // ✅ NEW: Log fix suggestions for DProc errors
         if (error instanceof DProcError && error.fixes.length > 0) {
           logger.info("How to fix:");
           error.fixes.forEach((fix, i) => {
@@ -422,19 +402,10 @@ export class ReportExecutor {
           });
         }
 
-        await this.db.updateStatus(executionId, "failed", {
+        await this.executionRepo.updateStatus(executionId, "failed", {
           completedAt: Date.now(),
           executionTime: Date.now() - startTime,
           error: errorMessage,
-          // ✅ Future: Store structured error data (requires schema update)
-          // errorCode,
-          // errorDetails: error instanceof DProcError
-          //   ? JSON.stringify({
-          //       fixes: error.fixes,
-          //       context: error.context,
-          //       severity: error.severity
-          //     })
-          //   : undefined
         });
       }
 
@@ -445,11 +416,11 @@ export class ReportExecutor {
   }
 
   /**
-   * Execute processor.ts with abort signal support
+   * Execute processor.ts
    */
   private async executeProcessor(
     pipelinePath: string,
-    inputs: Record<string, unknown>,
+    inputs: Record<string, any>,
     executionId: string,
     signal: AbortSignal
   ): Promise<ProcessorResult> {
@@ -459,7 +430,6 @@ export class ReportExecutor {
       throw new Error("Processor execution cancelled");
     }
 
-    // ✅ NEW: Better error for missing processor
     try {
       await fs.access(processorPath);
     } catch {
@@ -482,7 +452,6 @@ export class ReportExecutor {
       },
       readDataFile: async (filename: string) => {
         if (signal.aborted) throw new Error("Cancelled");
-
         const dataPath = path.join(pipelinePath, "data", filename);
         const content = await fs.readFile(dataPath, "utf-8");
 
@@ -497,7 +466,6 @@ export class ReportExecutor {
       },
       saveBundle: async (data: any, filename: string) => {
         if (signal.aborted) throw new Error("Cancelled");
-
         const bundlePath = path.join(
           pipelinePath,
           "output",
@@ -525,12 +493,9 @@ export class ReportExecutor {
       },
     };
 
-    // Use tsx to execute TypeScript files
     context.logger.debug(`Loading TypeScript processor: ${processorPath}`);
 
     try {
-      // Dynamic import with tsx support via NODE_OPTIONS
-      // tsx is already registered globally via NODE_OPTIONS="--import tsx/esm"
       const processorUrl = pathToFileURL(processorPath).href;
       const cacheBuster = Date.now();
       const processorModule = await import(processorUrl + "?t=" + cacheBuster);
@@ -544,6 +509,7 @@ export class ReportExecutor {
       if (!result || typeof result !== "object") {
         throw new Error("Processor must return ProcessorResult object");
       }
+
       if (!result.attributes || typeof result.attributes !== "object") {
         throw new Error("Processor result must include 'attributes' object");
       }
@@ -559,7 +525,6 @@ export class ReportExecutor {
     pipelinePath: string
   ): Promise<Record<string, string>> {
     const promptsDir = path.join(pipelinePath, "prompts");
-
     try {
       const files = await fs.readdir(promptsDir);
       const prompts: Record<string, string> = {};
@@ -585,7 +550,6 @@ export class ReportExecutor {
     format: string
   ): Promise<string> {
     const templatesDir = path.join(pipelinePath, "templates");
-
     const possibleNames = [
       `report.${format}.njk`,
       `${format}.njk`,

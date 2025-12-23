@@ -1,16 +1,12 @@
 import { readFile } from "fs/promises";
 import { readFileSync, existsSync } from "fs";
 import { parse } from "yaml";
-import type {
-  SystemConfig,
-  LLMConfig,
-  PipelineSpec,
-} from "@aganitha/dproc-types";
+import type { SystemConfig, LLMConfig, PipelineSpec } from "../types/index.js";
 import path from "path";
 import { SecretsManager } from "./secrets.js";
 import "dotenv/config";
 
-// ✅ NEW: Import errors
+// Import errors
 import {
   PipelineSpecMissingError,
   InvalidPipelineError,
@@ -46,16 +42,14 @@ export class ConfigLoader {
 
   /**
    * Load pipeline spec.yml
-   * ✅ NOW WITH STRUCTURED ERRORS
    */
   async loadPipelineSpec(pipelinePath: string): Promise<PipelineSpec> {
     const specPath = path.join(pipelinePath, "spec.yml");
-
     try {
       const content = await readFile(specPath, "utf-8");
       const spec = parse(content) as PipelineSpec;
 
-      // ✅ NEW: Basic validation
+      // Basic validation
       if (!spec.pipeline?.name) {
         throw new InvalidPipelineError(path.basename(pipelinePath), [
           "Missing pipeline.name in spec.yml",
@@ -64,7 +58,7 @@ export class ConfigLoader {
 
       return spec;
     } catch (error: any) {
-      // ✅ NEW: Better error for missing file
+      // Better error for missing file
       if (error.code === "ENOENT") {
         throw new PipelineSpecMissingError(
           path.basename(pipelinePath),
@@ -86,16 +80,14 @@ export class ConfigLoader {
 
   /**
    * Load pipeline config.yml
-   * ✅ NOW WITH STRUCTURED ERRORS
    */
   async loadPipelineConfig(pipelinePath: string): Promise<LLMConfig> {
     const configPath = path.join(pipelinePath, "config.yml");
-
     try {
       const content = await readFile(configPath, "utf-8");
       const config = parse(content) as LLMConfig;
 
-      // ✅ NEW: Basic validation
+      // Basic validation
       if (!config.llm?.provider) {
         throw new InvalidPipelineError(path.basename(pipelinePath), [
           "Missing llm.provider in config.yml",
@@ -124,7 +116,6 @@ export class ConfigLoader {
 
   /**
    * Get API key with priority: ENV > secrets.json
-   * ✅ NOW WITH STRUCTURED ERRORS
    */
   getApiKey(provider: "openai" | "anthropic" | "google"): string {
     const providerUpper = provider.toUpperCase();
@@ -140,13 +131,11 @@ export class ConfigLoader {
     const secretsPath = this.secretsManager.getSecretsPath();
     try {
       if (!existsSync(secretsPath)) {
-        // ✅ NEW: Throw structured error
         throw new APIKeyMissingError(provider);
       }
 
       const secretsContent = readFileSync(secretsPath, "utf-8");
       const parsed = JSON.parse(secretsContent);
-
       if (parsed.apiKeys && parsed.apiKeys[provider]) {
         const key = parsed.apiKeys[provider];
         if (key && key.trim() !== "") {
@@ -161,7 +150,7 @@ export class ConfigLoader {
       // Otherwise fall through to missing key error
     }
 
-    // ✅ NEW: Throw structured error instead of generic Error
+    // Throw structured error instead of generic Error
     throw new APIKeyMissingError(provider);
   }
 }

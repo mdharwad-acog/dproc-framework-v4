@@ -8,6 +8,5 @@
     "composite": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"],
-  "references": [{ "path": "../dproc-types" }]
+  "exclude": ["node_modules", "dist"]
 }

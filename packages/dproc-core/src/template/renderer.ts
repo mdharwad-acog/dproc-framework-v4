@@ -1,5 +1,5 @@
 import nunjucks from "nunjucks";
-import type { TemplateContext } from "@aganitha/dproc-types";
+import type { TemplateContext } from "../types";
 
 // ✅ NEW: Import errors
 import { TemplateRenderError } from "../errors/index.js";
