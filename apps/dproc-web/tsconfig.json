@@ -22,10 +22,7 @@
       "@/*": ["./*"]
     }
   },
-  "references": [
-    { "path": "../../packages/dproc-types" },
-    { "path": "../../packages/dproc-core" }
-  ],
+  "references": [{ "path": "../../packages/dproc-core" }],
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
 }

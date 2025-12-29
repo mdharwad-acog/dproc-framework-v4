@@ -1,6 +1,6 @@
 {
   "name": "@aganitha/dproc-core",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "LLM-powered data processing framework with integrated CLI tools, queue management, and multi-provider support",
   "author": "Mjafarsadiq D <mdharwad@aganitha.ai>",
   "license": "MIT",
@@ -8,8 +8,8 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "dproc": "./bin/dproc.js",
-    "dproc-worker": "./bin/dproc-worker.js"
+    "dproc": "bin/dproc.js",
+    "dproc-worker": "bin/dproc-worker.js"
   },
   "exports": {
     ".": {
@@ -65,9 +65,9 @@
     "@ai-sdk/anthropic": "^1.0.5",
     "@ai-sdk/google": "^1.0.8",
     "@ai-sdk/openai": "^1.0.9",
+    "@mdx-js/mdx": "^3.1.1",
     "ai": "^4.0.38",
     "axios": "^1.7.9",
-    "better-sqlite3": "^12.5.0",
     "bullmq": "^5.66.1",
     "chalk": "^5.4.1",
     "cheerio": "^1.1.2",
@@ -78,21 +78,25 @@
     "inquirer": "^13.1.0",
     "ioredis": "^5.4.2",
     "nunjucks": "^3.2.4",
+    "react": "19.2.1",
     "ora": "^8.1.1",
     "papaparse": "^5.5.3",
-    "pg": "^8.16.3",
+    "playwright": "^1.57.0",
+    "react-dom": "19.2.1",
+    "rehype-prism-plus": "^2.0.1",
+    "remark-gfm": "^4.0.1",
     "xml2js": "^0.6.2",
     "yaml": "^2.6.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.12",
     "@types/debug": "^4.1.12",
     "@types/inquirer": "^9.0.7",
     "@types/node": "^22.10.0",
+    "@types/react": "^19.2.7",
     "@types/nunjucks": "^3.2.6",
     "@types/papaparse": "^5.5.2",
-    "@types/pg": "^8.16.0",
+    "@types/react-dom": "^19.2.3",
     "@types/xml2js": "^0.4.14",
     "typescript": "^5.7.2"
   },

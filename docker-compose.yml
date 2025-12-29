@@ -132,7 +132,7 @@ services:
       # ========================================================================
       # REDIS CONFIGURATION - localhost since using host network
       # ========================================================================
-      REDIS_HOST: localhost
+      REDIS_HOST: redis
       REDIS_PORT: 6379
 
       # ========================================================================
@@ -167,7 +167,8 @@ services:
     # Bypasses Chrome OS Crostini networking restrictions for direct internet
     # access. Worker connects to Redis via localhost:6379
     # ========================================================================
-    network_mode: "host"
+    networks:
+      - dproc-network
 
 # =============================================================================
 # VOLUMES
