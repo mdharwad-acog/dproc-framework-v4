@@ -594,35 +594,70 @@ export default function ExecutePipelinePage({
                     {executionStatus.outputPath && (
                       <div className="space-y-2 pt-4 border-t border-border">
                         <p className="text-sm font-medium">Output Ready</p>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1 border-border bg-transparent"
-                            onClick={() =>
-                              window.open(
-                                `/api/preview/${executionId}`,
-                                "_blank"
-                              )
-                            }
-                          >
-                            <Eye className="mr-2 size-4" />
-                            Preview
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground"
-                            onClick={() =>
-                              window.open(
-                                `/api/download/${executionId}`,
-                                "_blank"
-                              )
-                            }
-                          >
-                            <Download className="mr-2 size-4" />
-                            Download
-                          </Button>
-                        </div>
+
+                        {/* ✅ MDX/PDF Format - Show Preview and PDF Download */}
+                        {(outputFormat === "mdx" || outputFormat === "pdf") && (
+                          <div className="flex flex-col gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full border-border bg-transparent"
+                              onClick={() =>
+                                window.open(`/reports/${executionId}`, "_blank")
+                              }
+                            >
+                              <Eye className="mr-2 size-4" />
+                              Preview Report
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+                              onClick={() =>
+                                window.open(
+                                  `/api/reports/${executionId}/pdf`,
+                                  "_blank"
+                                )
+                              }
+                            >
+                              <Download className="mr-2 size-4" />
+                              Download PDF
+                            </Button>
+                          </div>
+                        )}
+
+                        {/* ✅ Other Formats - Show default preview/download */}
+                        {outputFormat !== "mdx" && outputFormat !== "pdf" && (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 border-border bg-transparent"
+                              onClick={() =>
+                                window.open(
+                                  `/api/preview/${executionId}`,
+                                  "_blank"
+                                )
+                              }
+                            >
+                              <Eye className="mr-2 size-4" />
+                              Preview
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground"
+                              onClick={() =>
+                                window.open(
+                                  `/api/download/${executionId}`,
+                                  "_blank"
+                                )
+                              }
+                            >
+                              <Download className="mr-2 size-4" />
+                              Download
+                            </Button>
+                          </div>
+                        )}
+
                         <p className="text-xs text-muted-foreground mt-2 break-all">
                           {executionStatus.outputPath}
                         </p>

@@ -27,12 +27,14 @@ import {
   TemplateRenderError,
 } from "../errors/index.js";
 import { PipelineValidator } from "../validation/index.js";
+import { MDXRenderer } from "../template/mdx-renderer.js";
 
 export class ReportExecutor {
   private queue: Queue;
   private executionRepo: ExecutionRepository;
   private llmProvider: LLMProvider;
   private templateRenderer: TemplateRenderer;
+  private mdxRenderer: MDXRenderer;
   private configLoader: ConfigLoader;
   private cacheStore: CacheManager;
   private workspace: WorkspaceManager;
@@ -47,6 +49,7 @@ export class ReportExecutor {
     this.executionRepo = new ExecutionRepository();
     this.llmProvider = new LLMProvider();
     this.templateRenderer = new TemplateRenderer();
+    this.mdxRenderer = new MDXRenderer();
     this.configLoader = new ConfigLoader();
     this.cacheStore = new CacheManager();
     this.workspace = new WorkspaceManager();
@@ -322,29 +325,90 @@ export class ReportExecutor {
       };
 
       // ========================================================================
-      // STEP 6: Render final template
+      // STEP 6: Render MDX template (ALWAYS - for web UI)
       // ========================================================================
-      logger.info("Rendering template...");
-      let template: string;
+      logger.info("Rendering MDX template for web UI...");
+
+      let mdxTemplate: string;
       try {
-        template = await this.loadTemplate(pipelinePath, jobData.outputFormat);
+        mdxTemplate = await this.loadTemplate(pipelinePath, "mdx");
       } catch (error: any) {
         throw new TemplateMissingError(
           jobData.pipelineName,
-          `${jobData.outputFormat}.njk`,
+          "report.mdx.njk",
           path.join(pipelinePath, "templates")
         );
       }
 
-      let finalOutput: string;
+      let mdxOutput: string;
       try {
-        finalOutput = this.templateRenderer.render(template, templateContext);
+        // ✅ Process Nunjucks FIRST, then save as MDX
+        mdxOutput = this.templateRenderer.render(mdxTemplate, templateContext);
       } catch (error: any) {
         throw new TemplateRenderError(
-          `${jobData.outputFormat}.njk`,
-          error.message || "Failed to render output template",
+          "report.mdx.njk",
+          error.message || "Failed to render MDX template",
           error instanceof Error ? error : undefined
         );
+      }
+
+      if (abortController.signal.aborted) {
+        throw new Error("Job cancelled during MDX rendering");
+      }
+
+      // ========================================================================
+      // STEP 7: Save MDX output (always saved, for web viewing)
+      // ========================================================================
+      const mdxOutputPath = await this.saveOutput(
+        pipelinePath,
+        mdxOutput,
+        "mdx",
+        executionId
+      );
+      logger.info(`MDX output saved: ${mdxOutputPath}`);
+
+      // ========================================================================
+      // STEP 8: Render user's requested format (if different from MDX)
+      // ========================================================================
+      let userOutputPath: string | undefined = undefined;
+
+      if (jobData.outputFormat !== "mdx") {
+        logger.info(`User requested format: ${jobData.outputFormat}`);
+
+        try {
+          const userTemplate = await this.loadTemplate(
+            pipelinePath,
+            jobData.outputFormat
+          );
+
+          let userOutput: string;
+          try {
+            userOutput = this.templateRenderer.render(
+              userTemplate,
+              templateContext
+            );
+          } catch (error: any) {
+            throw new TemplateRenderError(
+              `${jobData.outputFormat}.njk`,
+              error.message || "Failed to render output template",
+              error instanceof Error ? error : undefined
+            );
+          }
+
+          userOutputPath = await this.saveOutput(
+            pipelinePath,
+            userOutput,
+            jobData.outputFormat,
+            executionId
+          );
+          logger.info(`User output saved: ${userOutputPath}`);
+        } catch (error: any) {
+          // If template doesn't exist, userOutputPath stays undefined
+          // This means we'll convert from MDX on-demand during download
+          logger.warn(
+            `No template for ${jobData.outputFormat}, will convert from MDX on download`
+          );
+        }
       }
 
       if (abortController.signal.aborted) {
@@ -352,23 +416,13 @@ export class ReportExecutor {
       }
 
       // ========================================================================
-      // STEP 7: Save output
-      // ========================================================================
-      const outputPath = await this.saveOutput(
-        pipelinePath,
-        finalOutput,
-        jobData.outputFormat,
-        executionId
-      );
-      logger.info(`Output saved: ${outputPath}`);
-
-      // ========================================================================
-      // STEP 8: Update storage with success
+      // STEP 9: Update storage with success
       // ========================================================================
       await this.executionRepo.updateStatus(executionId, "completed", {
         completedAt: Date.now(),
         executionTime: Date.now() - startTime,
-        outputPath,
+        outputPath: mdxOutputPath, // ✅ Always MDX for web viewing
+        userOutputPath: userOutputPath, // ✅ User's format if template exists
         bundlePath,
         processorMetadata: processorResult.metadata,
         llmMetadata: llmEnrichment.metadata,
@@ -558,11 +612,18 @@ export class ReportExecutor {
     format: string
   ): Promise<string> {
     const templatesDir = path.join(pipelinePath, "templates");
-    const possibleNames = [
-      `report.${format}.njk`,
-      `${format}.njk`,
-      `template.${format}.njk`,
-    ];
+
+    // ✅ For MDX, look for .mdx.njk files (Nunjucks preprocessing)
+    const possibleNames =
+      format === "mdx"
+        ? [
+            `report.mdx.njk`,
+            `${format}.mdx.njk`,
+            `template.mdx.njk`,
+            `report.mdx`, // Fallback to plain MDX
+            `${format}.mdx`,
+          ]
+        : [`report.${format}.njk`, `${format}.njk`, `template.${format}.njk`];
 
     for (const name of possibleNames) {
       const templatePath = path.join(templatesDir, name);

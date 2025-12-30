@@ -19,9 +19,10 @@
 │   │   │   ├── [name]
 │   │   │   │   └── route.ts
 │   │   │   └── route.ts
-│   │   ├── preview
+│   │   ├── reports
 │   │   │   └── [id]
-│   │   │       └── route.ts
+│   │   │       └── pdf
+│   │   │           └── route.ts
 │   │   ├── stats
 │   │   │   └── route.ts
 │   │   └── stream
@@ -35,17 +36,33 @@
 │   │   ├── new
 │   │   │   └── page.tsx
 │   │   └── page.tsx
+│   ├── error.tsx
 │   ├── favicon.ico
 │   ├── globals.css
 │   ├── layout.tsx
 │   ├── page.tsx
+│   ├── reports
+│   │   ├── [id]
+│   │   │   ├── layout.tsx
+│   │   │   ├── page.tsx
+│   │   │   └── print
+│   │   │       └── page.tsx
+│   │   └── _styles
+│   │       └── print.css
 │   └── settings
 │       └── page.tsx
 ├── components
+│   ├── error-alert.tsx
+│   ├── error-boundary.tsx
+│   ├── loading-skeleton.tsx
 │   ├── navigation.tsx
-│   ├── pipeline-form.tsx
 │   ├── recent-execution.tsx
-│   ├── report-preview.tsx
+│   ├── report
+│   │   ├── ChartBar.tsx
+│   │   ├── index.ts
+│   │   ├── KpiCard.tsx
+│   │   ├── KpiGrid.tsx
+│   │   └── WarningCallout.tsx
 │   ├── theme-provider.tsx
 │   └── ui
 │       ├── alert.tsx
@@ -65,9 +82,14 @@
 ├── eslint.config.mjs
 ├── files.txt
 ├── hooks
+│   ├── use-error-handler.ts
 │   └── use-streaming-report.ts
 ├── lib
+│   ├── error-types.ts
+│   ├── error-utils.ts
+│   ├── report-api.ts
 │   ├── server-api.ts
+│   ├── toast-helper.tsx
 │   └── utils.ts
 ├── next.config.ts
 ├── next-env.d.ts
@@ -82,4 +104,4 @@
 ├── README.md
 └── tsconfig.json
 
-29 directories, 54 files
+35 directories, 70 files

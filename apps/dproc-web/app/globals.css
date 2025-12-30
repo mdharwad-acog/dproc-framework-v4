@@ -148,3 +148,156 @@
 .animate-gradient {
   animation: gradient 3s ease infinite;
 }
+
+/* ============================================
+   MDX Report Styling
+   ============================================ */
+
+.prose {
+  /* Typography */
+  --tw-prose-body: theme("colors.foreground");
+  --tw-prose-headings: theme("colors.foreground");
+  --tw-prose-links: theme("colors.primary");
+  --tw-prose-bold: theme("colors.foreground");
+  --tw-prose-counters: theme("colors.muted.foreground");
+  --tw-prose-bullets: theme("colors.muted.foreground");
+  --tw-prose-hr: theme("colors.border");
+  --tw-prose-quotes: theme("colors.foreground");
+  --tw-prose-quote-borders: theme("colors.border");
+  --tw-prose-code: theme("colors.foreground");
+  --tw-prose-th-borders: theme("colors.border");
+  --tw-prose-td-borders: theme("colors.border");
+}
+
+.prose h1 {
+  font-size: 2rem;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+.prose h2 {
+  font-size: 1.5rem;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.prose h3 {
+  font-size: 1.25rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.prose p {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.7;
+}
+
+.prose ul,
+.prose ol {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.prose li {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.prose a {
+  color: var(--tw-prose-links);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.prose a:hover {
+  text-decoration: underline;
+}
+
+.prose strong {
+  font-weight: 600;
+}
+
+.prose hr {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+  border-top: 1px solid var(--tw-prose-hr);
+}
+
+/* Table Styling */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.prose thead {
+  background-color: hsl(var(--muted));
+}
+
+.prose th {
+  border: 1px solid hsl(var(--border));
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  background-color: hsl(var(--muted));
+}
+
+.prose td {
+  border: 1px solid hsl(var(--border));
+  padding: 0.75rem;
+}
+
+.prose tbody tr:hover {
+  background-color: hsl(var(--accent) / 0.5);
+}
+
+/* Code */
+.prose code {
+  background-color: hsl(var(--muted));
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.9em;
+}
+
+.prose pre {
+  background-color: hsl(var(--muted));
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.prose pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+/* Blockquotes */
+.prose blockquote {
+  border-left: 4px solid hsl(var(--border));
+  padding-left: 1rem;
+  margin-left: 0;
+  margin-right: 0;
+  font-style: italic;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Images */
+.prose img {
+  border-radius: 0.5rem;
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Prevent components from being too wide */
+.prose > * {
+  max-width: 100%;
+}

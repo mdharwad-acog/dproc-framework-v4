@@ -1,0 +1,410 @@
+/* ============================================
+   Document Design System
+   Always Light - Like a Printed Document
+   ============================================ */
+
+/* Typography Scale - Fixed Colors (No Dark Mode) */
+.report-document {
+  /* Force light background and text */
+  background: #ffffff;
+  color: #0f172a;
+
+  /* Typography variables */
+  --doc-font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --doc-font-mono: "SF Mono", Monaco, "Cascadia Code", monospace;
+
+  --doc-text-primary: #0f172a;
+  --doc-text-secondary: #475569;
+  --doc-text-tertiary: #94a3b8;
+
+  --doc-link: #2563eb;
+  --doc-link-hover: #1e40af;
+
+  --doc-border: #e2e8f0;
+  --doc-border-strong: #cbd5e1;
+
+  --doc-bg-subtle: #f8fafc;
+  --doc-bg-muted: #f1f5f9;
+
+  --doc-spacing-section: 3rem;
+  --doc-spacing-block: 1.5rem;
+  --doc-spacing-inline: 0.75rem;
+
+  /* Document styling */
+  font-family: var(--doc-font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Remove dark mode overrides - documents are always light */
+/* No .dark styles needed */
+
+/* Typography Hierarchy */
+.report-document h1 {
+  font-size: 2.25rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.5rem 0;
+  color: var(--doc-text-primary);
+}
+
+.report-document h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  margin: var(--doc-spacing-section) 0 var(--doc-spacing-block) 0;
+  color: var(--doc-text-primary);
+}
+
+.report-document h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: var(--doc-spacing-block) 0 var(--doc-spacing-inline) 0;
+  color: var(--doc-text-primary);
+}
+
+.report-document p {
+  margin: var(--doc-spacing-inline) 0;
+  color: var(--doc-text-secondary);
+}
+
+.report-document strong {
+  font-weight: 600;
+  color: var(--doc-text-primary);
+}
+
+.report-document em {
+  font-style: italic;
+  color: var(--doc-text-secondary);
+}
+
+/* Links - Subtle, not dominant */
+.report-document a {
+  color: var(--doc-link);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.report-document a:hover {
+  border-bottom-color: var(--doc-link-hover);
+}
+
+/* Lists */
+.report-document ul,
+.report-document ol {
+  margin: var(--doc-spacing-inline) 0;
+  padding-left: 1.5rem;
+}
+
+.report-document li {
+  margin: 0.375rem 0;
+  color: var(--doc-text-secondary);
+}
+
+.report-document li::marker {
+  color: var(--doc-text-tertiary);
+}
+
+/* Horizontal Rule - Section Divider */
+.report-document hr {
+  border: none;
+  height: 1px;
+  background: var(--doc-border);
+  margin: var(--doc-spacing-section) 0;
+}
+
+/* Tables - Clean, Editorial */
+.report-document table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--doc-spacing-block) 0;
+  font-size: 0.9375rem;
+  background: #ffffff;
+}
+
+.report-document thead {
+  border-bottom: 2px solid var(--doc-border-strong);
+}
+
+.report-document th {
+  padding: 0.625rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--doc-text-tertiary);
+  background: var(--doc-bg-subtle);
+}
+
+.report-document td {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--doc-border);
+  color: var(--doc-text-secondary);
+}
+
+.report-document tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Code - Inline and Blocks */
+.report-document code {
+  font-family: var(--doc-font-mono);
+  font-size: 0.875em;
+  padding: 0.125rem 0.375rem;
+  background: var(--doc-bg-muted);
+  border-radius: 0.25rem;
+  color: var(--doc-text-primary);
+}
+
+.report-document pre {
+  font-family: var(--doc-font-mono);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  padding: 1rem;
+  background: var(--doc-bg-muted);
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: var(--doc-spacing-block) 0;
+}
+
+.report-document pre code {
+  padding: 0;
+  background: none;
+}
+
+/* Blockquotes - Editorial Style */
+.report-document blockquote {
+  margin: var(--doc-spacing-block) 0;
+  padding-left: 1rem;
+  border-left: 3px solid var(--doc-border-strong);
+  color: var(--doc-text-secondary);
+  font-style: italic;
+}
+
+/* Images */
+.report-document img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: var(--doc-spacing-block) 0;
+}
+
+/* ============================================
+   Components - Disappear into Content
+   ============================================ */
+
+/* Cards - Minimal, Borderless by Default */
+.report-document [class*="Card"] {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: var(--doc-spacing-block) 0;
+}
+
+.report-document [class*="CardHeader"] {
+  padding: 0 0 0.5rem 0;
+}
+
+.report-document [class*="CardTitle"] {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--doc-text-primary);
+  margin: 0;
+}
+
+.report-document [class*="CardContent"] {
+  padding: 0;
+  color: var(--doc-text-secondary);
+}
+
+/* KPI Grid - Inline Metrics */
+.report-document [class*="KpiGrid"] {
+  display: grid;
+  gap: 1.5rem;
+  margin: var(--doc-spacing-block) 0;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.report-document [class*="KpiCard"] {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+/* Callouts - Editorial, Left-Border Style */
+.report-document [class*="Callout"] {
+  margin: var(--doc-spacing-block) 0;
+  padding: 1rem 1rem 1rem 1.25rem;
+  border-left: 3px solid var(--doc-border-strong);
+  background: var(--doc-bg-subtle);
+  border-radius: 0;
+}
+
+.report-document [class*="Callout"][class*="info"] {
+  border-left-color: #3b82f6;
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.report-document [class*="Callout"][class*="warning"] {
+  border-left-color: #f59e0b;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.report-document [class*="Callout"][class*="error"] {
+  border-left-color: #ef4444;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.report-document [class*="Callout"][class*="success"] {
+  border-left-color: #10b981;
+  background: #f0fdf4;
+  color: #065f46;
+}
+
+/* ============================================
+   Charts - Embedded, Editorial Style
+   ============================================ */
+
+.report-document .chart-container {
+  margin: var(--doc-spacing-block) 0;
+  padding: 1rem;
+  background: var(--doc-bg-subtle);
+  border-radius: 0.5rem;
+  border: 1px solid var(--doc-border);
+}
+
+.report-document .chart-container h4 {
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--doc-text-tertiary);
+}
+
+/* ============================================
+   Document Header & Footer
+   ============================================ */
+
+.report-header {
+  padding-bottom: 1.5rem;
+  margin-bottom: var(--doc-spacing-section);
+  border-bottom: 1px solid var(--doc-border);
+}
+
+.report-meta {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--doc-text-tertiary);
+}
+
+.report-meta p {
+  margin: 0;
+}
+
+.report-meta strong {
+  font-weight: 500;
+  color: var(--doc-text-secondary);
+}
+
+.report-footer {
+  margin-top: var(--doc-spacing-section);
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--doc-border);
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--doc-text-tertiary);
+}
+
+/* ============================================
+   Screen Layout - Centered Document
+   ============================================ */
+
+@media screen {
+  body {
+    background: #f8fafc;
+  }
+
+  .report-document {
+    max-width: 210mm;
+    margin: 0 auto;
+    padding: 2rem;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Print layout - full width */
+@media print {
+  .report-document {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background: white;
+    box-shadow: none;
+  }
+}
+
+/* ============================================
+   Print Optimization - Compact Layout
+   ============================================ */
+
+@media print {
+  .report-document {
+    font-size: 10.5pt;
+    line-height: 1.5;
+  }
+
+  /* Override screen spacing for print */
+  .report-document {
+    --doc-spacing-section: 1.5rem;
+    --doc-spacing-block: 1rem;
+    --doc-spacing-inline: 0.5rem;
+  }
+
+  .report-document h1 {
+    font-size: 1.75rem;
+    margin: 0 0 0.75rem 0;
+  }
+
+  .report-document h2 {
+    font-size: 1.25rem;
+    margin: 1.5rem 0 0.75rem 0;
+  }
+
+  .report-document h3 {
+    font-size: 1rem;
+    margin: 1rem 0 0.5rem 0;
+  }
+
+  .report-document p {
+    margin: 0.5rem 0;
+  }
+
+  .report-document [class*="Card"] {
+    margin: 0.75rem 0;
+  }
+
+  .report-document [class*="Callout"] {
+    margin: 0.75rem 0;
+    padding: 0.75rem 0.75rem 0.75rem 1rem;
+  }
+
+  .report-document .chart-container {
+    margin: 1rem 0;
+    padding: 0.75rem;
+  }
+}

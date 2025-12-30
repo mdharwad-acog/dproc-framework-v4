@@ -224,6 +224,7 @@ export const ExecutionRecordSchema = z.object({
   userId: z.string().optional(),
   inputs: z.record(z.unknown()),
   outputFormat: z.string(),
+  userOutputPath: z.string().optional(),
   status: z.enum(["queued", "processing", "completed", "failed", "cancelled"]),
   priority: z.enum(["low", "normal", "high"]),
   outputPath: z.string().optional(),
