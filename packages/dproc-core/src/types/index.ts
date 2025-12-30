@@ -7,13 +7,15 @@ import { z } from "zod";
 // Input definition schema (what's in spec.yml)
 export const InputDefinitionSchema = z.object({
   name: z.string(),
-  type: z.enum(["text", "number", "select", "boolean", "array"]),
+  type: z.enum(["text", "number", "select", "boolean", "array", "file"]),
   label: z.string(),
   required: z.boolean().default(false),
   default: z.union([z.string(), z.number(), z.boolean()]).optional(),
   placeholder: z.string().optional(),
   description: z.string().optional(),
   options: z.array(z.string()).optional(),
+  accept: z.string().optional(), // ✅ Add for file type restrictions
+  maxSize: z.number().optional(),
 });
 
 // ✅ Input VALUES schema (what users send) - with auto-coercion

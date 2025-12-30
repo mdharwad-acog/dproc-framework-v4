@@ -1,0 +1,11 @@
+Date,Product,Category,Sales,Units,Region,Salesperson
+2024-01-15,Laptop,Electronics,45000,15,North,Alice Johnson
+2024-01-16,Mouse,Accessories,1200,60,South,Bob Smith
+2024-01-17,Keyboard,Accessories,3000,40,East,Carol White
+2024-01-18,Monitor,Electronics,28000,20,West,David Brown
+2024-01-19,Laptop,Electronics,42000,14,North,Alice Johnson
+2024-01-20,Headphones,Accessories,5400,45,South,Bob Smith
+2024-01-21,Laptop,Electronics,48000,16,East,Carol White
+2024-01-22,Mouse,Accessories,1800,90,West,David Brown
+2024-01-23,Monitor,Electronics,31500,25,North,Alice Johnson
+2024-01-24,Keyboard,Accessories,3600,48,South,Bob Smith

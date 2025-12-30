@@ -172,6 +172,62 @@ export class ReportExecutor {
       }
 
       // ========================================================================
+      // HANDLE FILE UPLOADS - Save uploaded files to pipeline's data directory
+      // ========================================================================
+      logger.info("Processing file uploads...");
+      const processedFileInputs = new Set<string>(); // ✅ Track which inputs are files
+
+      for (const [key, value] of Object.entries(jobData.inputs)) {
+        if (
+          typeof value === "object" &&
+          value !== null &&
+          "filename" in value &&
+          "content" in value
+        ) {
+          // This is a file input
+          const fileInput = value as {
+            filename: string;
+            content: string;
+            mimeType: string;
+            size: number;
+          };
+
+          try {
+            // Decode base64 content
+            const buffer = Buffer.from(fileInput.content, "base64");
+
+            // Save to pipeline's data directory
+            const dataDir = path.join(pipelinePath, "data");
+            await fs.mkdir(dataDir, { recursive: true });
+
+            const filePath = path.join(dataDir, fileInput.filename);
+            await fs.writeFile(filePath, buffer);
+
+            logger.info(
+              `Saved uploaded file: ${fileInput.filename} (${(fileInput.size / 1024).toFixed(2)} KB)`
+            );
+
+            // Replace input with just the filename (so processor can use readDataFile)
+            jobData.inputs[key] = fileInput.filename;
+
+            // ✅ Mark this input as a processed file
+            processedFileInputs.add(key);
+          } catch (error: any) {
+            throw new ProcessingError(
+              jobData.pipelineName,
+              "file-upload",
+              `Failed to save uploaded file: ${error.message}`,
+              error
+            );
+          }
+        }
+      }
+
+      if (abortController.signal.aborted) {
+        throw new Error("Job cancelled during file upload processing");
+      }
+
+      // ========================================================================
       // PRE-EXECUTION VALIDATION WITH NORMALIZATION
       // ========================================================================
       logger.info("Validating execution requirements...");
@@ -181,7 +237,8 @@ export class ReportExecutor {
         spec,
         config,
         jobData.inputs,
-        outputDir
+        outputDir,
+        processedFileInputs
       );
 
       // Throw if validation fails (structured errors)

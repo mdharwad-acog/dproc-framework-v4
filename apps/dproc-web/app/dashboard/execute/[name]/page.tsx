@@ -31,6 +31,7 @@ import {
   Download,
   Eye,
   AlertCircle,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -51,6 +52,8 @@ type PipelineSpec = {
     default?: any;
     placeholder?: string;
     options?: string[];
+    accept?: string;
+    maxSize?: number;
   }>;
   outputs: string[];
 };
@@ -382,6 +385,80 @@ export default function ExecutePipelinePage({
                           ))}
                         </SelectContent>
                       </Select>
+                    )}
+
+                    {input.type === "file" && (
+                      <>
+                        <Input
+                          id={input.name}
+                          type="file"
+                          accept={input.accept || "*"}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+
+                            // Check file size (default 10MB max)
+                            const maxSize = (input.maxSize || 10) * 1024 * 1024;
+                            if (file.size > maxSize) {
+                              setValidationErrors({
+                                ...validationErrors,
+                                [input.name]: `File size must be less than ${input.maxSize || 10}MB`,
+                              });
+                              return;
+                            }
+
+                            // Read file as base64
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              const base64Content = (
+                                reader.result as string
+                              ).split(",")[1]; // Remove data:mime;base64, prefix
+                              setInputs({
+                                ...inputs,
+                                [input.name]: {
+                                  filename: file.name,
+                                  content: base64Content,
+                                  mimeType: file.type,
+                                  size: file.size,
+                                },
+                              });
+
+                              // Clear validation error
+                              if (validationErrors[input.name]) {
+                                const newErrors = { ...validationErrors };
+                                delete newErrors[input.name];
+                                setValidationErrors(newErrors);
+                              }
+                            };
+
+                            reader.onerror = () => {
+                              setValidationErrors({
+                                ...validationErrors,
+                                [input.name]: "Failed to read file",
+                              });
+                            };
+
+                            reader.readAsDataURL(file);
+                          }}
+                          disabled={executing}
+                          className={`bg-secondary/50 border-border ${
+                            validationErrors[input.name]
+                              ? "border-destructive focus-visible:ring-destructive"
+                              : ""
+                          }`}
+                        />
+
+                        {/* Show selected file info */}
+                        {inputs[input.name]?.filename && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                            <FileText className="h-4 w-4" />
+                            <span>
+                              {inputs[input.name].filename} (
+                              {(inputs[input.name].size / 1024).toFixed(2)} KB)
+                            </span>
+                          </div>
+                        )}
+                      </>
                     )}
 
                     {/* ✅ Validation error display */}

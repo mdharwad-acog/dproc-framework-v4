@@ -42,12 +42,13 @@ export class PipelineValidator {
     spec: PipelineSpec,
     config: LLMConfig | null,
     inputs: Record<string, any>,
-    outputDir: string
+    outputDir: string,
+    processedFileInputs?: Set<string>
   ): Promise<ValidationResult> {
     const errors: ValidationResult["errors"] = [];
 
     // 1. Validate inputs (with auto-conversion)
-    const inputErrors = this.validateInputs(spec, inputs);
+    const inputErrors = this.validateInputs(spec, inputs, processedFileInputs);
     errors.push(...inputErrors);
 
     // 2. Normalize inputs (convert types)
@@ -77,7 +78,8 @@ export class PipelineValidator {
    */
   private validateInputs(
     spec: PipelineSpec,
-    inputs: Record<string, any>
+    inputs: Record<string, any>,
+    processedFileInputs?: Set<string>
   ): ValidationResult["errors"] {
     const errors: ValidationResult["errors"] = [];
 
@@ -90,6 +92,14 @@ export class PipelineValidator {
       console.log(`   Type expected: ${input.type}`);
       console.log(`   Value received: ${value} (${typeof value})`);
       console.log(`   Required: ${input.required}`);
+
+      // ✅ Skip validation for already-processed file inputs
+      if (input.type === "file" && processedFileInputs?.has(input.name)) {
+        console.log(
+          `⏭️  Skipping validation for processed file: ${input.name}`
+        );
+        continue;
+      }
 
       // Check required fields
       if (
@@ -189,6 +199,56 @@ export class PipelineValidator {
           };
         }
         break;
+
+      case "file":
+        if (
+          typeof value !== "object" ||
+          !value ||
+          !("filename" in value) ||
+          !("content" in value)
+        ) {
+          return {
+            field: input.name,
+            issue: `"${input.label || input.name}" must be a valid file upload`,
+            severity: "error",
+          };
+        }
+
+        // Check file size if maxSize is specified
+        if (input.maxSize && value.size) {
+          const maxBytes = input.maxSize * 1024 * 1024;
+          if (value.size > maxBytes) {
+            return {
+              field: input.name,
+              issue: `File size must be less than ${input.maxSize}MB`,
+              severity: "error",
+            };
+          }
+        }
+
+        // Check file type if accept is specified
+        if (input.accept && value.mimeType) {
+          const acceptedTypes = input.accept.split(",").map((t) => t.trim());
+          const isAccepted = acceptedTypes.some((type) => {
+            if (type.startsWith(".")) {
+              // Extension check
+              return value.filename.toLowerCase().endsWith(type.toLowerCase());
+            } else {
+              // MIME type check (supports wildcards like image/*)
+              const pattern = type.replace("*", ".*");
+              return new RegExp(`^${pattern}$`).test(value.mimeType);
+            }
+          });
+
+          if (!isAccepted) {
+            return {
+              field: input.name,
+              issue: `File type not accepted. Allowed: ${input.accept}`,
+              severity: "error",
+            };
+          }
+        }
+        break;
     }
 
     return null;
@@ -235,6 +295,10 @@ export class PipelineValidator {
         case "text":
         case "select":
           normalized[input.name] = String(value);
+          break;
+        case "file":
+          // Keep file object as-is for now (will be processed by executor)
+          normalized[input.name] = value;
           break;
 
         default:

@@ -20,7 +20,7 @@ const program = new Command();
 
 // Read package.json for version
 const packageJson = JSON.parse(
-  await readFile(new URL("../package.json", import.meta.url), "utf-8")
+  await readFile(new URL("../../package.json", import.meta.url), "utf-8")
 );
 
 // Initialize workspace manager

@@ -1,6 +1,6 @@
 {
   "name": "@aganitha/dproc-core",
-  "version": "0.1.2",
+  "version": "0.1.6",
   "description": "LLM-powered data processing framework with integrated CLI tools, queue management, and multi-provider support",
   "author": "Mjafarsadiq D <mdharwad@aganitha.ai>",
   "license": "MIT",
@@ -57,7 +57,7 @@
   "scripts": {
     "build": "tsc && chmod +x bin/*.js",
     "dev": "tsc --watch",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo",
     "type-check": "tsc --noEmit",
     "prepublishOnly": "pnpm run clean && pnpm run build"
   },
