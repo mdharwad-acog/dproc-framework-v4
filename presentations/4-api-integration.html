@@ -1,0 +1,78 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>DProc API Integration - Presentation</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Monaco','Courier New',monospace;background:#0f1419}.slides-container{position:relative;width:100vw;height:100vh;background:#0f1419}.slide{position:absolute;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;padding:60px;opacity:0;transition:opacity 0.5s;color:#e0e0e0;top:0}.slide.active{opacity:1}.slide-1,.slide-3,.slide-5,.slide-7,.slide-9{background:#0f1419}.slide-2,.slide-4,.slide-6,.slide-8,.slide-10{background:#1a1a2e}h1{font-size:54px;color:#00d4ff;margin-bottom:20px}h2{font-size:44px;color:#00d4ff;margin-bottom:40px}h3{font-size:16px;color:#86efac}.code-block{background:#1e2936;border:1px solid #00d4ff;padding:15px;border-radius:4px;font-size:11px;color:#60a5fa;margin:20px 0;overflow-x:auto;line-height:1.6}.box{background:#1e2936;border-left:3px solid #00d4ff;padding:20px;margin:15px 0;border-radius:4px}.box h4{color:#86efac;margin-bottom:8px}.controls{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);display:flex;gap:20px;background:rgba(0,0,0,0.9);padding:15px 30px;border-radius:50px;border:1px solid #00d4ff}button{background:#00d4ff;color:#0f1419;border:none;padding:10px 20px;border-radius:4px;cursor:pointer;font-weight:600}.counter{color:#00d4ff;font-weight:600}</style></head><body><div class="slides-container"><div class="slide slide-1 active"><h1>$ dproc api-integration</h1><p style="font-size:22px;color:#b0e0e6;margin-top:60px">Enterprise API Integration & Real-World Pipelines</p><p style="margin-top:80px;font-size:13px;color:#60a5fa">▸ REST APIs ▸ GraphQL ▸ Webhooks</p><p style="margin-top:15px;font-size:13px;color:#60a5fa">▸ Authentication ▸ Rate Limiting ▸ Examples</p></div><div class="slide slide-2"><h2 style="text-align:center">RESTful API Integration</h2><div class="box" style="margin-top:40px"><h4>Making API Requests</h4><div class="code-block">const response = await context.http.get(
+  'https://api.example.com/companies',
+  { headers: { 'Authorization': `Bearer ${token}` } }
+);
+const data = await response.json();</div></div><div class="box"><h4>POST with Data</h4><div class="code-block">await context.http.post('/api/analysis', {
+  body: JSON.stringify({ companyId, depth }),
+  headers: { 'Content-Type': 'application/json' }
+});</div></div><div class="box"><h4>Error Handling</h4><div class="code-block">try {
+  const res = await context.http.get(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return await res.json();
+} catch (e) { /* handle */ }</div></div></div><div class="slide slide-3"><h2>GraphQL Queries</h2><p style="color:#b0e0e6;margin-top:30px">Efficiently fetch nested data structures</p><div class="code-block" style="margin-top:40px">const query = `
+  query GetCompany($id: ID!) {
+    company(id: $id) {
+      name
+      financials { revenue expenses }
+      executives { name title }
+    }
+  }
+`;
+const result = await context.graphql(query, { id: companyId });</div><div class="box" style="margin-top:30px"><h4>Benefits</h4><p style="font-size:13px;color:#b0e0e6">▸ Request only needed fields ▸ Single round-trip ▸ Type-safe with introspection</p></div></div><div class="slide slide-4"><h2 style="text-align:center">Authentication & Security</h2><div class="box" style="margin-top:40px"><h4>🔐 OAuth 2.0</h4><div class="code-block">const token = await context.auth.getOAuthToken(
+  'provider',
+  { clientId, clientSecret, scope: ['read:company'] }
+);</div></div><div class="box"><h4>🔍 API Keys</h4><div class="code-block">const apiKey = await context.secrets.get('API_KEY');
+await context.http.get('/api/data', {
+  headers: { 'X-API-Key': apiKey }
+});</div></div><div class="box"><h4>💳 JWT Bearer</h4><div class="code-block">const headers = {
+  'Authorization': `Bearer ${jwtToken}`
+};</div></div></div><div class="slide slide-5"><h2>Rate Limiting & Retry Logic</h2><p style="color:#b0e0e6;margin-top:30px">Respect API quotas and handle failures gracefully</p><div class="box" style="margin-top:40px"><h4>Built-in Rate Limiter</h4><div class="code-block">const limiter = context.rateLimit({
+  maxRequests: 100,
+  windowMs: 60000 // 1 minute
+});
+await limiter(() => context.http.get(url));</div></div><div class="box"><h4>Exponential Backoff Retry</h4><div class="code-block">await context.retry(async () => {
+  return await context.http.get(url);
+}, { maxAttempts: 5, backoffMs: 1000 });</div></div></div><div class="slide slide-6"><h2 style="text-align:center">Webhook Handling</h2><div class="box" style="margin-top:40px"><h4>Receive Webhook Events</h4><div class="code-block">context.onWebhook('company:created', async (event) => {
+  const { companyId, timestamp } = event.data;
+  await processCompanyCreation(companyId);
+  return { status: 'processed' };
+});</div></div><div class="box"><h4>Verify Signatures</h4><div class="code-block">const isValid = context.webhook.verify(
+  payload,
+  signature,
+  secret
+);</div></div><div style="margin-top:30px;color:#86efac"><p>▸ Event replay ▸ Retry mechanisms ▸ Delivery confirmation</p></div></div><div class="slide slide-7"><h2>Real-World Example: Company Analysis</h2><p style="color:#b0e0e6;margin-top:30px">Multi-step pipeline combining multiple APIs</p><div class="code-block" style="margin-top:30px;font-size:10px">export default async function analyze(inputs, context) {
+  // 1. Fetch company from Crunchbase
+  const company = await context.http.get(
+    `https://api.crunchbase.com/companies/${inputs.name}`
+  );
+  
+  // 2. Get financials from SEC Edgar
+  const financials = await context.http.get(
+    `https://sec.gov/api/company/${company.ticker}`
+  );
+  
+  // 3. Analyze with LLM
+  const analysis = await context.llm.generate({
+    prompt: `Analyze company: ${JSON.stringify(company)}
+    Financials: ${JSON.stringify(financials)}`
+  });
+  
+  return { company, financials, analysis };
+}</div></div><div class="slide slide-8"><h2 style="text-align:center">Example: Patent Data Pipeline</h2><div class="box" style="margin-top:30px"><h4>USPTO Integration</h4><p style="font-size:13px;color:#b0e0e6;margin-top:10px">Fetch patent data, parse claims, extract technologies</p></div><div class="box"><h4>LLM Enrichment</h4><p style="font-size:13px;color:#b0e0e6;margin-top:10px">Classify patents, extract business impact, trend analysis</p></div><div class="box"><h4>Database Storage</h4><p style="font-size:13px;color:#b0e0e6;margin-top:10px">Store structured data, create indices, enable search</p></div><div style="margin-top:30px;color:#86efac"><p>▸ Batch processing millions of patents</p><p style="margin-top:10px">▸ Incremental updates via webhooks</p></div></div><div class="slide slide-9"><h2>Example: Data Extraction Pipeline</h2><p style="color:#b0e0e6;margin-top:30px">Extract structured data from unstructured sources</p><div class="code-block" style="margin-top:30px;font-size:10px">export default async function extractData(inputs, context) {
+  // 1. Fetch raw document
+  const doc = await context.http.get(inputs.url);
+  
+  // 2. Parse with LLM
+  const extracted = await context.llm.generate({
+    model: 'claude-3-sonnet',
+    prompt: `Extract from document:\n${doc}`
+  });
+  
+  // 3. Validate with Zod
+  const validated = z.object({
+    entities: z.array(z.string()),
+    relations: z.array(z.object({ from: z.string(), to: z.string() }))
+  }).parse(JSON.parse(extracted));
+  
+  return validated;
+}</div></div><div class="slide slide-10"><h2 style="text-align:center">Integration Best Practices</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:40px"><div><div class="box"><h4>API Selection</h4><p style="font-size:13px;color:#b0e0e6">▸ REST for CRUD ▸ GraphQL for complex queries ▸ WebSocket for real-time</p></div><div class="box"><h4>Caching</h4><p style="font-size:13px;color:#b0e0e6">▸ Cache API responses ▸ Respect cache headers ▸ Invalidate strategically</p></div></div><div><div class="box"><h4>Monitoring</h4><p style="font-size:13px;color:#b0e0e6">▸ Track API usage ▸ Alert on quota limits ▸ Log all failures</p></div><div class="box"><h4>Documentation</h4><p style="font-size:13px;color:#b0e0e6">▸ Document all endpoints ▸ Include examples ▸ Maintain changelog</p></div></div></div></div></div><div class="controls"><button onclick="previousSlide()">← Prev</button><span class="counter"><span id="current">1</span> / <span id="total">10</span></span><button onclick="nextSlide()">Next →</button></div><script>let current=1;const total=document.querySelectorAll('.slide').length;document.getElementById('total').textContent=total;function showSlide(n){const slides=document.querySelectorAll('.slide');if(n>total)current=total;if(n<1)current=1;slides.forEach(s=>s.classList.remove('active'));slides[current-1].classList.add('active');document.getElementById('current').textContent=current}function nextSlide(){current++;showSlide(current)}function previousSlide(){current--;showSlide(current)}document.addEventListener('keydown',(e)=>{if(e.key==='ArrowRight')nextSlide();if(e.key==='ArrowLeft')previousSlide()});</script></body></html>
